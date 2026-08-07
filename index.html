@@ -1,0 +1,2067 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Registru">
+<meta name="theme-color" content="#14181A">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<title>Registru — buget personal</title>
+<style>
+  :root{
+    --paper:#14181A;
+    --rule:#262E2A;
+    --card:#1C2320;
+    --ink:#F2F4F1;
+    --ink-soft:#A9B7AF;
+    --ink-faint:#66746D;
+    --brass:#C99A52;
+    --brass-light:#E8CFA0;
+    --red:#E0685C;
+    --red-soft:#3A211E;
+    --green:#5FBE8D;
+    --green-soft:#1E332A;
+    --gold:#8A6A2F;
+    --gold-soft:#241D0E;
+    --blue:#6C97E0;
+    --purple:#B07AE0;
+    --teal:#5FC3D9;
+    --pink:#E070A8;
+    --gray:#8A8F87;
+    --font-display: ui-serif, Georgia, "Times New Roman", serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Courier New", monospace;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --tabbar-h: 62px;
+  }
+
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        var(--paper) 0px, var(--paper) 27px,
+        var(--rule) 27px, var(--rule) 28px
+      );
+    color:var(--ink);
+    font-family:var(--font-body);
+    overscroll-behavior-y: contain;
+    -webkit-user-select:none;
+    user-select:none;
+    padding-bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 14px);
+  }
+  input, textarea{ -webkit-user-select:text; user-select:text; }
+
+  /* ============ HEADER ============ */
+  header{
+    padding: calc(16px + var(--safe-top)) 18px 12px;
+    display:flex; align-items:baseline; justify-content:space-between;
+    border-bottom: 2px solid var(--ink);
+    position:sticky; top:0; z-index:35;
+    background:var(--paper);
+  }
+  header .brand{
+    font-family:var(--font-display);
+    font-weight:700; font-size:22px; letter-spacing:0.3px;
+  }
+  header .brand small{
+    display:block; font-family:var(--font-body); font-size:11px;
+    font-weight:500; color:var(--ink-soft); letter-spacing:1.5px; text-transform:uppercase;
+    margin-top:2px;
+  }
+  .icon-btn{
+    background:none; border:1.5px solid var(--ink); color:var(--ink);
+    width:36px; height:36px; border-radius:50%; font-size:16px;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  .view{ display:none; }
+  .view.active{ display:block; }
+
+  /* ============ MONTH NAV ============ */
+  .month-nav{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 14px 18px 10px;
+  }
+  .month-nav button{
+    background:var(--ink); color:var(--paper); border:none;
+    width:34px; height:34px; border-radius:8px; font-size:16px; font-weight:700;
+  }
+  .month-nav .label{
+    font-family:var(--font-display); font-size:19px; font-weight:700;
+    text-transform:capitalize;
+  }
+
+  /* ============ AVAILABLE (banii ramasi) — hero, viu ============ */
+  .available-hero{
+    margin: 0 18px 14px;
+    background: linear-gradient(155deg, #2E463C 0%, #223328 100%);
+    color:var(--ink);
+    border-radius:18px; padding:20px 20px 18px;
+    position:relative; overflow:hidden;
+    box-shadow: 0 10px 24px rgba(20,32,26,0.28);
+    transition: box-shadow .3s ease;
+  }
+  .available-hero::before{
+    content:""; position:absolute; top:-40%; right:-20%; width:220px; height:220px;
+    background: radial-gradient(circle, rgba(184,134,63,0.35) 0%, transparent 70%);
+    pointer-events:none;
+  }
+  .available-hero .lbl{
+    font-size:11px; text-transform:uppercase; letter-spacing:1.4px; opacity:0.7; position:relative;
+  }
+  .available-hero .val{
+    font-family:var(--font-mono); font-size:34px; font-weight:700; margin-top:4px;
+    position:relative; letter-spacing:-0.5px;
+    transition: transform .18s ease;
+  }
+  .available-hero.negative .val{ color:#E8A199; }
+  .available-hero .sub{
+    display:flex; gap:14px; margin-top:12px; position:relative;
+  }
+  .available-hero .sub div{ font-size:11.5px; opacity:0.85; }
+  .available-hero .sub b{ font-family:var(--font-mono); font-weight:700; }
+  .available-hero.flash-up{ box-shadow: 0 10px 30px rgba(47,107,79,0.55); }
+  .available-hero.flash-down{ box-shadow: 0 10px 30px rgba(168,52,43,0.55); }
+  .hero-transfer-btn{
+    position:relative; margin-top:14px; width:100%; padding:10px;
+    background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22);
+    border-radius:9px; color:var(--ink); font-size:12.5px; font-weight:700;
+  }
+  .available-hero .val.bump{ transform:scale(1.08); }
+
+  /* ============ SUMMARY ============ */
+  .summary{
+    padding: 0 18px 16px;
+    display:grid; grid-template-columns: 1fr 1fr; gap:8px;
+  }
+  .sum-card{
+    background:var(--card); border:1px solid var(--rule); border-radius:10px;
+    padding:10px 12px; text-align:left;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.22);
+  }
+  .sum-card .lbl{
+    font-size:10px; text-transform:uppercase; letter-spacing:0.8px;
+    color:var(--ink-soft); font-weight:600;
+  }
+  .sum-card .val{
+    font-family:var(--font-mono); font-size:16px; font-weight:700; margin-top:3px;
+  }
+  .sum-card.venit .val{color:var(--green);}
+  .sum-card.cheltuiala .val{color:var(--red);}
+
+  /* ============ CHARTS ============ */
+  .chart-section{ padding: 4px 18px 6px; }
+  .chart-card{
+    background:var(--card); border:1px solid var(--rule); border-radius:14px;
+    padding:16px 14px 10px; margin-bottom:14px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+  }
+  .chart-card h3{
+    font-family:var(--font-display); font-size:14.5px; margin:0 0 12px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .chart-card h3 .tip{ font-family:var(--font-body); font-size:10.5px; color:var(--ink-faint); font-weight:500; }
+
+  /* trend bar chart */
+  .trend-chart{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    height:130px; padding-top:26px; gap:4px;
+  }
+  .trend-col{
+    flex:1; display:flex; flex-direction:column; align-items:center; height:100%;
+    justify-content:flex-end; position:relative;
+  }
+  .trend-bars{
+    display:flex; align-items:flex-end; gap:2.5px; height:100%;
+  }
+  .trend-bar{
+    width:9px; border-radius:3px 3px 0 0;
+    transform:scaleY(0); transform-origin:bottom;
+    transition: transform .6s cubic-bezier(.34,1.56,.64,1);
+  }
+  .trend-bar.show{ transform:scaleY(1); }
+  .trend-bar.venit{ background: var(--green); }
+  .trend-bar.cheltuiala{ background: var(--red); }
+  .trend-lbl{ font-size:9.5px; color:var(--ink-soft); margin-top:6px; font-weight:600; text-transform:capitalize; }
+  .trend-col.current .trend-lbl{ color:var(--brass); }
+  .trend-tooltip{
+    margin-top:8px; background:var(--gold-soft); border:1px solid var(--brass-light);
+    border-radius:9px; padding:9px 11px; font-size:12px; display:none; line-height:1.6;
+  }
+  .trend-tooltip.show{ display:block; }
+  .trend-tooltip b{ font-family:var(--font-mono); }
+  .legend-row{ display:flex; gap:14px; margin-top:2px; padding-left:2px; }
+  .legend-row span{ font-size:10.5px; color:var(--ink-soft); display:flex; align-items:center; gap:4px; }
+  .legend-dot{ width:8px; height:8px; border-radius:2px; display:inline-block; }
+
+  /* donut chart */
+  .donut-wrap{ display:flex; align-items:center; gap:16px; }
+  .donut-svg-holder{ position:relative; width:120px; height:120px; flex-shrink:0; }
+  .donut-svg-holder svg{ width:100%; height:100%; transform:rotate(0deg); }
+  .donut-svg-holder circle{ transition: stroke-dashoffset 0.9s cubic-bezier(.3,.8,.4,1), stroke-width .25s ease, opacity .25s ease; }
+  .donut-center{
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center;
+  }
+  .donut-center .t{ font-size:9px; text-transform:uppercase; color:var(--ink-soft); letter-spacing:0.5px; }
+  .donut-center .v{ font-family:var(--font-mono); font-weight:700; font-size:13px; margin-top:2px; }
+  .donut-legend{ flex:1; min-width:0; }
+  .dl-row{
+    display:flex; align-items:center; gap:8px; padding:5px 0; font-size:12px; cursor:pointer;
+  }
+  .dl-row .dl-dot{ width:9px; height:9px; border-radius:3px; flex-shrink:0; }
+  .dl-row .dl-name{ flex:1; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .dl-row .dl-val{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-soft); }
+  .empty-chart{ text-align:center; padding:20px 10px; color:var(--ink-soft); font-size:12.5px; }
+
+  /* budgets */
+  .budget-row{ padding:9px 0; border-bottom:1px solid var(--rule); cursor:pointer; }
+  .budget-row:last-child{ border-bottom:none; }
+  .budget-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .budget-name{ display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; }
+  .budget-amt{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-soft); }
+  .budget-bar-track{ height:6px; border-radius:4px; background:var(--rule); overflow:hidden; }
+  .budget-bar-fill{ height:100%; border-radius:4px; transition:width .5s cubic-bezier(.3,.8,.4,1); }
+
+  /* ============ CALENDAR ============ */
+  .calendar-wrap{ padding: 4px 18px 6px; }
+  .cal-weekdays{
+    display:grid; grid-template-columns: repeat(7,1fr);
+    margin-bottom:6px;
+  }
+  .cal-weekdays div{
+    text-align:center; font-size:10px; font-weight:700; color:var(--ink-faint);
+    text-transform:uppercase;
+  }
+  .cal-grid{
+    display:grid; grid-template-columns: repeat(7,1fr); gap:4px;
+  }
+  .cal-cell{
+    aspect-ratio:1; border-radius:8px; position:relative;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:var(--card); border:1px solid var(--rule);
+    font-family:var(--font-mono); font-size:13px; font-weight:600;
+  }
+  .cal-cell.empty{ background:transparent; border:none; }
+  .cal-cell.today{ border:1.5px solid var(--brass); color:var(--brass); }
+  .cal-cell .dots{ display:flex; gap:2px; margin-top:3px; position:absolute; bottom:5px; }
+  .cal-cell .dot{ width:4px; height:4px; border-radius:50%; }
+  .dot.venit{ background:var(--green); }
+  .dot.cheltuiala{ background:var(--red); }
+
+  /* ============ TRANSACTION LIST ============ */
+  .list-section{ padding: 14px 18px 8px; }
+  .list-section h2{
+    font-family:var(--font-display); font-size:15px; font-weight:700;
+    margin:0 0 10px; display:flex; align-items:center; justify-content:space-between;
+  }
+  .list-section h2 span.count{
+    font-family:var(--font-body); font-size:11px; color:var(--ink-soft); font-weight:500;
+  }
+  .tx-row{
+    display:flex; align-items:center; gap:10px;
+    background:var(--card); border:1px solid var(--rule); border-radius:10px;
+    padding:10px 12px; margin-bottom:8px; cursor:pointer;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  }
+  .tx-row .tag{
+    width:8px; height:34px; border-radius:4px; flex-shrink:0;
+  }
+  .tag.venit{background:var(--green);}
+  .tag.cheltuiala{background:var(--red);}
+  .tx-row .info{ flex:1; min-width:0; }
+  .tx-row .info .desc{
+    font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .tx-row .info .meta{
+    font-size:11px; color:var(--ink-soft); margin-top:2px;
+    display:flex; gap:6px; align-items:center;
+  }
+  .tx-row .info .meta .cat-badge{
+    background:var(--paper); border:1px solid var(--rule); border-radius:20px; padding:1px 7px; font-size:10px;
+  }
+  .tx-row .amount{
+    font-family:var(--font-mono); font-weight:700; font-size:14.5px; flex-shrink:0;
+  }
+  .amount.venit{ color:var(--green); }
+  .amount.cheltuiala{ color:var(--red); }
+  .tx-row .del{
+    background:none; border:none; color:var(--red); font-size:17px;
+    min-width:40px; min-height:40px; display:flex; align-items:center; justify-content:center;
+    margin: -8px -8px -8px 0; flex-shrink:0; border-radius:8px;
+  }
+  .tx-row .del:active{ background:var(--red-soft); }
+  .empty-state{
+    text-align:center; padding:30px 10px; color:var(--ink-soft); font-size:13.5px;
+  }
+
+  /* ============ SAVINGS TAB ============ */
+  .savings-wrap{ padding: 16px 18px 8px; }
+  .pot-card{
+    background:var(--card); border:1px solid var(--rule); border-radius:14px;
+    padding:16px; margin-bottom:12px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+  }
+  .pot-card.pinned{
+    background: linear-gradient(155deg, #2C2410 0%, #221B0B 100%);
+    border-color:var(--brass);
+  }
+  .pot-top{ display:flex; align-items:center; justify-content:space-between; }
+  .pot-name{ display:flex; align-items:center; gap:8px; font-weight:700; font-size:14.5px; }
+  .pot-name .picon{ font-size:18px; }
+  .pot-bal{ font-family:var(--font-mono); font-weight:700; font-size:19px; margin-top:8px; }
+  .pot-card.pinned .pot-bal{ color:var(--brass); font-size:24px; }
+  .pot-sub{ font-size:11px; color:var(--ink-soft); margin-top:2px; }
+  .pot-actions{ display:flex; gap:6px; margin-top:12px; flex-wrap:wrap; }
+  .pot-actions button{
+    flex:1; min-width:80px; padding:9px 6px; border-radius:9px; font-size:12px; font-weight:700; border:1.5px solid var(--ink);
+    background:var(--ink); color:var(--paper);
+  }
+  .pot-actions button.secondary{ background:var(--card); color:var(--ink); }
+  .pot-actions button.warn{ background:var(--card); color:var(--red); border-color:var(--red-soft); }
+  .pot-actions button.danger{ background:var(--card); color:var(--red); border-color:var(--red-soft); flex:0 0 auto; padding:9px 12px; }
+  .sub-note{ font-size:11px; color:var(--brass-light); margin-top:8px; position:relative; }
+  .pot-log{ margin-top:12px; border-top:1px dashed var(--rule); padding-top:10px; display:none; }
+  .pot-log.show{ display:block; }
+  .pot-log .lrow{ font-size:11.5px; color:var(--ink-soft); padding:3px 0; display:flex; justify-content:space-between; }
+  .pot-log .lrow b{ font-family:var(--font-mono); color:var(--ink); }
+  .add-pot-btn{
+    width:100%; padding:13px; border-radius:12px; border:1.5px dashed var(--ink-faint);
+    background:none; color:var(--ink-soft); font-size:13.5px; font-weight:700; margin-top:6px;
+  }
+
+  /* ============ TAB BAR ============ */
+  .tabbar{
+    position:fixed; left:0; right:0; bottom:0; height:calc(var(--tabbar-h) + var(--safe-bottom));
+    background:var(--card); border-top:1.5px solid var(--ink);
+    display:flex; padding-bottom:var(--safe-bottom); z-index:40;
+  }
+  .tabbar button{
+    flex:1; background:none; border:none; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:2px; color:var(--ink-faint); font-size:10.5px; font-weight:700;
+  }
+  .tabbar button .ic{ display:flex; align-items:center; justify-content:center; }
+  .tabbar button.active{ color:var(--ink); }
+  .tabbar button.active .ic{ transform:scale(1.1); }
+
+  /* ============ FAB ============ */
+  .fab{
+    position:fixed; right:20px; bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 16px);
+    width:58px; height:58px; border-radius:50%;
+    background:var(--brass); color:#1B1608; border:none;
+    font-size:28px; font-weight:400; line-height:0;
+    box-shadow: 0 6px 16px rgba(31,46,39,0.35);
+    display:flex; align-items:center; justify-content:center;
+    z-index:41;
+  }
+
+  /* ============ MODAL ============ */
+  .overlay{
+    position:fixed; inset:0; background:rgba(31,46,39,0.5);
+    display:none; align-items:flex-end; z-index:50;
+  }
+  .overlay.show{ display:flex; }
+  .sheet{
+    background:var(--paper); width:100%; border-radius:18px 18px 0 0;
+    padding: 18px 18px calc(24px + var(--safe-bottom));
+    max-height:88vh; overflow-y:auto;
+  }
+  .sheet h3{
+    font-family:var(--font-display); font-size:18px; margin:0 0 16px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .sheet h3 button{
+    background:none; border:none; font-size:22px; color:var(--ink-soft);
+  }
+  .seg{
+    display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:14px;
+  }
+  .seg button{
+    padding:10px 4px; border-radius:9px; border:1.5px solid var(--rule);
+    background:var(--card); font-size:12.5px; font-weight:700; color:var(--ink-soft);
+  }
+  .seg button.active.venit{ background:var(--green-soft); border-color:var(--green); color:var(--green); }
+  .seg button.active.cheltuiala{ background:var(--red-soft); border-color:var(--red); color:var(--red); }
+
+  .field{ margin-bottom:14px; }
+  .field label{
+    display:block; font-size:11px; text-transform:uppercase; letter-spacing:0.6px;
+    color:var(--ink-soft); font-weight:700; margin-bottom:6px;
+  }
+  .field input[type=text], .field input[type=number], .field input[type=date], .field select{
+    width:100%; padding:11px 12px; border-radius:9px; border:1.5px solid var(--rule);
+    background:var(--card); font-size:15px; font-family:var(--font-body); color:var(--ink);
+  }
+  .field.amount input{ font-family:var(--font-mono); font-weight:700; }
+  .checkbox-row{
+    display:flex; align-items:center; gap:9px; margin-bottom:16px;
+    padding:10px 12px; background:var(--card); border:1.5px solid var(--rule); border-radius:9px;
+  }
+  .checkbox-row input{ width:18px; height:18px; accent-color: var(--brass); }
+  .checkbox-row label{ font-size:13px; font-weight:600; }
+  .save-btn{
+    width:100%; padding:14px; border:none; border-radius:11px;
+    background:var(--ink); color:var(--paper); font-size:15px; font-weight:700;
+  }
+  .err{ color:var(--red); font-size:12.5px; margin: -6px 0 12px; display:none; font-weight:600; }
+  .info-note{ font-size:12px; color:var(--ink-soft); line-height:1.5; margin-bottom:14px; }
+
+  .rec-item{
+    display:flex; align-items:center; gap:10px; padding:9px 0;
+    border-bottom:1px solid var(--rule); font-size:13px;
+  }
+  .rec-item .rinfo{ flex:1; }
+  .rec-item .rdel{ background:none; border:none; color:var(--red); font-size:13px; font-weight:700;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Registru<small>Buget lunar</small></div>
+  <div style="display:flex; gap:8px;">
+    <button class="icon-btn" id="btnBackup" title="Backup">⇅</button>
+    <button class="icon-btn" id="btnRecurring" title="Recurente">↻</button>
+  </div>
+</header>
+
+<!-- ================= VIEW: PRINCIPAL ================= -->
+<section class="view active" id="viewMain">
+
+  <div class="month-nav">
+    <button id="prevMonth">‹</button>
+    <div class="label" id="monthLabel">—</div>
+    <button id="nextMonth">›</button>
+  </div>
+
+  <div class="available-hero" id="availableHero">
+    <div class="lbl">Bani rămași luna aceasta</div>
+    <div class="val" id="availableVal">0 lei</div>
+    <div class="sub">
+      <div>Venituri: <b id="subVenit">0</b></div>
+      <div>Cheltuieli: <b id="subCheltuiala">0</b></div>
+    </div>
+    <div class="sub-note" id="econSpentNote"></div>
+    <button class="hero-transfer-btn" id="btnTransfer">⇄ Mută bani către / dintr-un cont</button>
+  </div>
+
+  <div class="summary">
+    <div class="sum-card venit"><div class="lbl">Venituri luna asta</div><div class="val" id="sumVenit">0</div></div>
+    <div class="sum-card cheltuiala"><div class="lbl">Cheltuieli luna asta</div><div class="val" id="sumCheltuiala">0</div></div>
+  </div>
+
+  <div class="chart-section">
+    <div class="chart-card">
+      <h3>Evoluție <span class="tip">ultimele 6 luni</span></h3>
+      <div class="trend-chart" id="trendChart"></div>
+      <div class="trend-tooltip" id="trendTooltip"></div>
+      <div class="legend-row">
+        <span><i class="legend-dot" style="background:var(--green)"></i>Venituri</span>
+        <span><i class="legend-dot" style="background:var(--red)"></i>Cheltuieli</span>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h3>Cheltuieli pe categorii <span class="tip">luna curentă</span></h3>
+      <div id="donutHolder"></div>
+    </div>
+
+    <div class="chart-card">
+      <h3>Bugete pe categorii <span class="tip">apasă ca să setezi o limită</span></h3>
+      <div id="budgetsList"></div>
+    </div>
+  </div>
+
+  <div class="calendar-wrap">
+    <div class="cal-weekdays">
+      <div>L</div><div>Ma</div><div>Mi</div><div>J</div><div>V</div><div>S</div><div>D</div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+
+  <div class="list-section">
+    <h2>Tranzacții <span class="count" id="txCount">0</span></h2>
+    <div id="txList"></div>
+  </div>
+
+</section>
+
+<!-- ================= VIEW: TRANZACȚII (listă completă, ușor de scrollat) ================= -->
+<section class="view" id="viewTx">
+  <div class="month-nav">
+    <button id="prevMonth2">‹</button>
+    <div class="label" id="monthLabel2">—</div>
+    <button id="nextMonth2">›</button>
+  </div>
+  <div style="padding: 4px 18px 12px;">
+    <input type="text" id="txSearch" placeholder="Caută după descriere..."
+      style="width:100%; padding:11px 12px; border-radius:9px; border:1.5px solid var(--rule); background:var(--card); font-size:14.5px; font-family:inherit; color:var(--ink);">
+  </div>
+  <div class="list-section" style="padding-top:0;">
+    <h2>Tranzacții <span class="count" id="txCountFull">0</span></h2>
+    <div id="txListFull"></div>
+  </div>
+</section>
+
+<!-- ================= VIEW: ECONOMII ================= -->
+<section class="view" id="viewSavings">
+  <div class="savings-wrap">
+    <div id="potsList"></div>
+    <button class="add-pot-btn" id="btnAddPot">+ Cont nou de economii</button>
+  </div>
+</section>
+
+<button class="fab" id="btnAdd">+</button>
+
+<div class="tabbar">
+  <button class="tab-btn active" data-view="viewMain"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><rect x="3" y="5" width="18" height="15" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg></span>Principal</button>
+  <button class="tab-btn" data-view="viewTx"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><rect x="4" y="3" width="16" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="13" y2="16"/></svg></span>Tranzacții</button>
+  <button class="tab-btn" data-view="viewSavings"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.3"/></svg></span>Economii</button>
+</div>
+
+<!-- ADD/EDIT TRANSACTION MODAL -->
+<div class="overlay" id="overlayAdd">
+  <div class="sheet">
+    <h3>Adaugă înregistrare <button id="closeAdd">×</button></h3>
+    <div class="seg" id="typeSeg">
+      <button data-type="venit" class="venit">Venit</button>
+      <button data-type="cheltuiala" class="cheltuiala">Cheltuială</button>
+    </div>
+    <div class="field amount">
+      <label>Sumă (lei)</label>
+      <input type="number" id="fAmount" inputmode="decimal" placeholder="0">
+    </div>
+    <div class="field">
+      <label>Descriere</label>
+      <input type="text" id="fDesc" placeholder="ex: Chirie, Salariu, Cumpărături...">
+    </div>
+    <div class="field" id="fSourceWrap">
+      <label>Plătești din</label>
+      <div class="seg" id="sourceSeg">
+        <button data-source="venit" class="venit active">Bani rămași</button>
+        <button data-source="economii" class="cheltuiala"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="vertical-align:-2px"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/></svg> Economii accesibile</button>
+      </div>
+    </div>
+    <div class="field" id="fCatWrap">
+      <label>Categorie</label>
+      <select id="fCat">
+        <option value="mancare">Mâncare</option>
+        <option value="transport">Transport</option>
+        <option value="facturi">Facturi</option>
+        <option value="sanatate">Sănătate</option>
+        <option value="distractie">Distracție</option>
+        <option value="altele" selected>Altele</option>
+      </select>
+    </div>
+    <div class="field" id="fDestWrap">
+      <label>Destinație</label>
+      <select id="fDestPot">
+        <option value="">Bani disponibili</option>
+      </select>
+      <div class="info-note" id="fDestNote" style="margin:8px 0 0; display:none;"></div>
+    </div>
+    <div class="field">
+      <label>Dată</label>
+      <input type="date" id="fDate">
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="fRecurring">
+      <label for="fRecurring">Se repetă în fiecare lună (aceeași zi)</label>
+    </div>
+    <div class="err" id="fErr">Completează suma și descrierea.</div>
+    <button class="save-btn" id="fSave">Salvează</button>
+    <div id="fDelWrap" style="display:none; margin-top:10px;">
+      <button class="save-btn" id="fDelete" style="background:var(--card); color:var(--red); border:1.5px solid var(--red-soft);">Șterge această înregistrare</button>
+    </div>
+  </div>
+</div>
+
+<!-- TRANSFER MODAL (Disponibil <-> orice cont) -->
+<div class="overlay" id="overlayTransfer">
+  <div class="sheet">
+    <h3>Mută bani <button id="closeTransfer">×</button></h3>
+    <div class="seg" id="transferDirSeg">
+      <button data-dir="out" class="venit active">Din Disponibil →</button>
+      <button data-dir="in" class="cheltuiala">← Către Disponibil</button>
+    </div>
+    <div class="field">
+      <label>Cont</label>
+      <select id="transferPot"></select>
+    </div>
+    <div class="field amount">
+      <label>Sumă (lei)</label>
+      <input type="number" id="transferAmount" inputmode="decimal" placeholder="0">
+    </div>
+    <div class="info-note" id="transferInfo"></div>
+    <div class="err" id="transferErr"></div>
+    <button class="save-btn" id="transferSave">Mută banii</button>
+  </div>
+</div>
+
+<!-- BUDGET MODAL -->
+<div class="overlay" id="overlayBudget">
+  <div class="sheet">
+    <h3 id="budgetTitle">Buget categorie <button id="closeBudget">×</button></h3>
+    <div class="field amount">
+      <label>Limită lunară (lei)</label>
+      <input type="number" id="budgetAmount" inputmode="decimal" placeholder="ex: 800">
+    </div>
+    <button class="save-btn" id="budgetSave">Salvează limita</button>
+    <div style="height:10px;"></div>
+    <button class="save-btn" id="budgetClear" style="background:var(--card); color:var(--red); border:1.5px solid var(--red-soft);">Elimină limita</button>
+  </div>
+</div>
+
+<!-- CUSTOM DIALOG (replaces native alert/confirm) -->
+<div class="overlay" id="overlayDialog">
+  <div class="sheet">
+    <h3 id="dlgTitle">Confirmare</h3>
+    <div id="dlgMsg" style="font-size:14px; color:var(--ink-soft); line-height:1.55; margin-bottom:20px;"></div>
+    <div style="display:flex; gap:10px;">
+      <button id="dlgCancelBtn" class="save-btn" style="background:var(--card); color:var(--ink); border:1.5px solid var(--rule); flex:1;">Anulează</button>
+      <button id="dlgConfirmBtn" class="save-btn" style="flex:1;">Confirmă</button>
+    </div>
+  </div>
+</div>
+
+<!-- BACKUP / EXPORT-IMPORT MODAL -->
+<div class="overlay" id="overlayBackup">
+  <div class="sheet">
+    <h3>Backup date <button id="closeBackup">×</button></h3>
+    <div class="info-note">Descarcă o copie a tuturor datelor tale (venituri, cheltuieli, economii) într-un fișier. Păstreaz-o undeva sigur — dacă vreodată pierzi datele din Safari, o poți reimporta ca să recuperezi tot.</div>
+    <button class="save-btn" id="btnExportData">⇩ Exportă backup (.json)</button>
+    <div style="height:12px;"></div>
+    <button class="save-btn" id="btnImportData" style="background:var(--card); color:var(--ink); border:1.5px solid var(--rule);">⇧ Importă dintr-un backup</button>
+    <input type="file" id="importFileInput" accept="application/json,.json" style="display:none;">
+    <div class="err" id="backupErr" style="margin-top:12px;"></div>
+  </div>
+</div>
+
+<!-- RECURRING MANAGER MODAL -->
+<div class="overlay" id="overlayRec">
+  <div class="sheet">
+    <h3>Recurente <button id="closeRec">×</button></h3>
+    <div class="info-note">Acestea se adaugă automat în fiecare lună, în aceeași zi. Apasă "Oprește" dacă nu mai vrei să apară de acum înainte (lunile trecute rămân neschimbate).</div>
+    <div id="recList"></div>
+  </div>
+</div>
+
+<!-- ADD POT MODAL -->
+<div class="overlay" id="overlayAddPot">
+  <div class="sheet">
+    <h3>Cont nou de economii <button id="closeAddPot">×</button></h3>
+    <div class="info-note">Ex: Bursă, Fond de urgență, Vacanță. Acest cont e separat de foaia principală — nu afectează banii rămași.</div>
+    <div class="field">
+      <label>Nume cont</label>
+      <input type="text" id="potName" placeholder="ex: Bursă">
+    </div>
+    <div class="err" id="potErr">Introdu un nume.</div>
+    <button class="save-btn" id="potSave">Creează cont</button>
+  </div>
+</div>
+
+<!-- DEPOSIT MODAL -->
+<div class="overlay" id="overlayDeposit">
+  <div class="sheet">
+    <h3 id="depositTitle">Adaugă bani <button id="closeDeposit">×</button></h3>
+    <div class="field amount">
+      <label>Sumă (lei)</label>
+      <input type="number" id="depAmount" inputmode="decimal" placeholder="0">
+    </div>
+    <div class="field">
+      <label>Notă (opțional)</label>
+      <input type="text" id="depNote" placeholder="ex: alocația lunii august">
+    </div>
+    <div class="err" id="depErr">Introdu o sumă validă.</div>
+    <button class="save-btn" id="depSave">Adaugă</button>
+  </div>
+</div>
+
+<!-- PINNED POT: RETRAGERE / ELIMINARE MODAL -->
+<div class="overlay" id="overlayPinnedOut">
+  <div class="sheet">
+    <h3 id="pinnedOutTitle">Retragere <button id="closePinnedOut">×</button></h3>
+    <div class="info-note" id="pinnedOutInfo"></div>
+    <div class="field amount">
+      <label>Sumă (lei)</label>
+      <input type="number" id="pinnedOutAmount" inputmode="decimal" placeholder="0">
+    </div>
+    <div class="err" id="pinnedOutErr"></div>
+    <button class="save-btn" id="pinnedOutSave">Confirmă</button>
+  </div>
+</div>
+
+<!-- WITHDRAW MODAL -->
+<div class="overlay" id="overlayWithdraw">
+  <div class="sheet">
+    <h3 id="wdTitle">Retragere <button id="closeWithdraw">×</button></h3>
+    <div class="info-note" id="wdInfo"></div>
+    <div class="field amount">
+      <label>Sumă de retras (lei)</label>
+      <input type="number" id="wdAmount" inputmode="decimal" placeholder="0">
+    </div>
+    <div class="err" id="wdErr">Suma depășește soldul acestui cont.</div>
+    <button class="save-btn" id="wdSave">Retrage și mută în Economii accesibile</button>
+  </div>
+</div>
+
+<script>
+/* ================= STORAGE + MIGRATION ================= */
+const OLD_KEY = 'registru_buget_v1';
+const STORE_KEY = 'registru_buget_v2';
+
+function freshData(){
+  return {
+    transactions: [],
+    recurring: [],
+    savingsPots: [ { id:'accesibile', name:'Economii accesibile', balance:0, locked:false, pinned:true } ],
+    savingsLog: [],
+    budgets: {}
+  };
+}
+
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+
+  // migrate from v1 if it exists
+  try{
+    const oldRaw = localStorage.getItem(OLD_KEY);
+    if(oldRaw){
+      const old = JSON.parse(oldRaw);
+      const fresh = freshData();
+      let importedTotal = 0;
+      (old.transactions||[]).forEach(t => {
+        if(t.type === 'economie'){
+          importedTotal += Number(t.amount);
+        } else {
+          fresh.transactions.push(t);
+        }
+      });
+      fresh.recurring = (old.recurring||[]).filter(r => r.type !== 'economie');
+      if(importedTotal > 0){
+        const pot = { id: uid(), name:'Economii (importate)', balance: importedTotal, locked:true, pinned:false };
+        fresh.savingsPots.push(pot);
+        fresh.savingsLog.push({ id: uid(), potId: pot.id, type:'depunere', amount: importedTotal, date: new Date().toISOString().slice(0,10), note:'Importat din versiunea anterioară' });
+      }
+      return fresh;
+    }
+  }catch(e){}
+
+  return freshData();
+}
+function saveData(){ localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
+let data = loadData();
+if(!data.savingsPots) data.savingsPots = freshData().savingsPots;
+if(!data.savingsLog) data.savingsLog = [];
+if(!data.budgets) data.budgets = {};
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function pad(n){ return n < 10 ? '0'+n : ''+n; }
+function fmtDate(y,m,d){ return `${y}-${pad(m+1)}-${pad(d)}`; }
+function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
+function todayStr(){ const t=new Date(); return fmtDate(t.getFullYear(), t.getMonth(), t.getDate()); }
+function money(n){
+  const sign = n < 0 ? '-' : '';
+  return sign + Math.abs(n).toLocaleString('ro-RO', {maximumFractionDigits:0}) + ' lei';
+}
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+const MONTHS = ['ianuarie','februarie','martie','aprilie','mai','iunie','iulie','august','septembrie','octombrie','noiembrie','decembrie'];
+const MONTHS_SHORT = ['ian','feb','mar','apr','mai','iun','iul','aug','sep','oct','noi','dec'];
+const CATEGORY_META = {
+  mancare:   { label:'Mâncare',    color:'var(--red)' },
+  transport: { label:'Transport',  color:'var(--blue)' },
+  facturi:   { label:'Facturi',    color:'var(--purple)' },
+  sanatate:  { label:'Sănătate',   color:'var(--teal)' },
+  distractie:{ label:'Distracție', color:'var(--pink)' },
+  altele:    { label:'Altele',     color:'var(--gray)' }
+};
+
+/* ================= ICON SET (consistent line icons, replace emoji) ================= */
+const ICONS = {
+  coin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em" style="vertical-align:-0.125em"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/></svg>',
+  trending: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em" style="vertical-align:-0.125em"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg>'
+};
+
+/* ================= STATE ================= */
+const today = new Date();
+let viewYear = today.getFullYear();
+let viewMonth = today.getMonth();
+let selectedDate = todayStr();
+let prevAvailable = null; // for animating the hero number
+
+/* ================= RECURRING GENERATION ================= */
+function ensureRecurringForMonth(y, m){
+  const ymKey = `${y}-${pad(m+1)}`;
+  data.recurring.forEach(r => {
+    if(!r.skippedMonths) r.skippedMonths = [];
+    if(r.skippedMonths.includes(ymKey)) return;
+    const start = new Date(r.startDate);
+    const startYM = start.getFullYear()*12 + start.getMonth();
+    const viewYM = y*12 + m;
+    if(viewYM < startYM) return;
+    const already = data.transactions.some(t => t.recurringId === r.id && t.date.startsWith(ymKey));
+    if(already) return;
+    const day = Math.min(r.dayOfMonth, daysInMonth(y,m));
+    data.transactions.push({
+      id: uid(), type:r.type, amount:r.amount, description:r.description,
+      category: r.category || 'altele', date: fmtDate(y,m,day), recurringId: r.id
+    });
+  });
+  saveData();
+}
+
+/* ================= NUMBER ANIMATION ================= */
+function animateNumber(el, from, to, duration=650){
+  const start = performance.now();
+  function step(now){
+    const t = Math.min(1,(now-start)/duration);
+    const eased = 1 - Math.pow(1-t,3);
+    const val = from + (to-from)*eased;
+    el.textContent = money(Math.round(val));
+    if(t<1) requestAnimationFrame(step);
+    else el.textContent = money(to);
+  }
+  requestAnimationFrame(step);
+}
+
+/* ================= RENDER: MAIN VIEW ================= */
+function render(){
+  ensureRecurringForMonth(viewYear, viewMonth);
+
+  document.getElementById('monthLabel').textContent = `${MONTHS[viewMonth]} ${viewYear}`;
+  document.getElementById('monthLabel2').textContent = `${MONTHS[viewMonth]} ${viewYear}`;
+
+  const monthKey = `${viewYear}-${pad(viewMonth+1)}`;
+  const monthTx = data.transactions.filter(t => t.date.startsWith(monthKey));
+  lastMonthTx = monthTx;
+
+  const totals = {venit:0, cheltuiala:0};
+  let econSpent = 0;
+  let venitRouted = 0;
+  monthTx.forEach(t => {
+    if(t.type === 'venit'){
+      if(t.toPot) venitRouted += Number(t.amount);
+      else totals.venit += Number(t.amount);
+    }
+    else if(t.type === 'cheltuiala'){
+      if(t.fundedBy === 'accesibile') econSpent += Number(t.amount);
+      else totals.cheltuiala += Number(t.amount);
+    }
+  });
+
+  document.getElementById('sumVenit').textContent = money(totals.venit);
+  document.getElementById('sumCheltuiala').textContent = money(totals.cheltuiala);
+  document.getElementById('subVenit').textContent = money(totals.venit);
+  document.getElementById('subCheltuiala').textContent = money(totals.cheltuiala);
+  const noteEl = document.getElementById('econSpentNote');
+  const notes = [];
+  if(econSpent > 0) notes.push(`${ICONS.coin} + ${money(econSpent)} cheltuiți din Economii accesibile (nu afectează suma de mai sus)`);
+  if(venitRouted > 0) notes.push(`${ICONS.coin} + ${money(venitRouted)} direcționați direct spre economii (nu intră în suma de mai sus)`);
+  noteEl.innerHTML = notes.join('<br>');
+
+  const available = totals.venit - totals.cheltuiala;
+  const hero = document.getElementById('availableHero');
+  const valEl = document.getElementById('availableVal');
+  hero.classList.toggle('negative', available < 0);
+
+  if(prevAvailable === null){
+    valEl.textContent = money(available);
+  } else if(prevAvailable !== available){
+    animateNumber(valEl, prevAvailable, available);
+    hero.classList.remove('flash-up','flash-down');
+    void hero.offsetWidth;
+    hero.classList.add(available > prevAvailable ? 'flash-up' : 'flash-down');
+    valEl.classList.add('bump');
+    setTimeout(()=>{ hero.classList.remove('flash-up','flash-down'); valEl.classList.remove('bump'); }, 700);
+  }
+  prevAvailable = available;
+
+  renderCalendar(monthTx);
+  renderList(monthTx);
+  renderTrendChart();
+  renderDonutChart(monthTx);
+  renderBudgets(monthTx);
+}
+
+function renderCalendar(monthTx){
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const offset = firstDay === 0 ? 6 : firstDay - 1;
+  const totalDays = daysInMonth(viewYear, viewMonth);
+
+  const byDay = {};
+  monthTx.forEach(t => {
+    const d = Number(t.date.slice(8,10));
+    (byDay[d] = byDay[d] || []).push(t);
+  });
+
+  for(let i=0;i<offset;i++){
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell empty';
+    grid.appendChild(cell);
+  }
+  const isCurrentMonth = viewYear === today.getFullYear() && viewMonth === today.getMonth();
+  for(let d=1; d<=totalDays; d++){
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell';
+    if(isCurrentMonth && d === today.getDate()) cell.classList.add('today');
+    const num = document.createElement('div');
+    num.textContent = d;
+    cell.appendChild(num);
+    const types = new Set((byDay[d]||[]).map(t=>t.type));
+    if(types.size){
+      const dots = document.createElement('div');
+      dots.className = 'dots';
+      ['venit','cheltuiala'].forEach(t=>{
+        if(types.has(t)){
+          const dot = document.createElement('div');
+          dot.className = 'dot ' + t;
+          dots.appendChild(dot);
+        }
+      });
+      cell.appendChild(dots);
+    }
+    cell.addEventListener('click', () => openAddModal(fmtDate(viewYear, viewMonth, d)));
+    grid.appendChild(cell);
+  }
+}
+
+let lastMonthTx = [];
+
+function renderList(monthTx){
+  document.getElementById('txCount').textContent = monthTx.length;
+  populateTxList('txList', monthTx);
+  applyTxSearch();
+}
+
+function populateTxList(containerId, monthTx){
+  const list = document.getElementById(containerId);
+  if(!list) return;
+  list.innerHTML = '';
+  if(monthTx.length === 0){
+    list.innerHTML = '<div class="empty-state">Nicio înregistrare în luna aceasta.<br>Apasă pe + sau pe o zi din calendar.</div>';
+    return;
+  }
+  const sorted = [...monthTx].sort((a,b)=> b.date.localeCompare(a.date));
+  const labels = {venit:'Venit', cheltuiala:'Cheltuială'};
+  sorted.forEach(t => {
+    const row = document.createElement('div');
+    row.className = 'tx-row';
+    const dayNum = Number(t.date.slice(8,10));
+    const txMonth = Number(t.date.slice(5,7)) - 1;
+    const sign = t.type === 'venit' ? '+' : '−';
+    const catBadge = (t.type === 'cheltuiala' && !t.toPot && t.category && CATEGORY_META[t.category])
+      ? `<span class="cat-badge">${CATEGORY_META[t.category].label}</span>` : '';
+    const srcBadge = (t.fundedBy === 'accesibile') ? `<span class="cat-badge">${ICONS.coin} din economii</span>` : '';
+    let potBadge = '';
+    if(t.type === 'venit' && t.toPot){
+      const p = data.savingsPots.find(x => x.id === t.toPot);
+      potBadge = `<span class="cat-badge">${ICONS.coin} spre ${escapeHtml(p ? p.name : 'cont')}</span>`;
+    } else if(t.type === 'venit' && t.fromPot){
+      const p = data.savingsPots.find(x => x.id === t.fromPot);
+      potBadge = `<span class="cat-badge">${ICONS.coin} retragere din ${escapeHtml(p ? p.name : 'cont')}</span>`;
+    } else if(t.type === 'cheltuiala' && t.toPot){
+      const p = data.savingsPots.find(x => x.id === t.toPot);
+      potBadge = `<span class="cat-badge">${ICONS.coin} transfer spre ${escapeHtml(p ? p.name : 'cont')}</span>`;
+    }
+    row.innerHTML = `
+      <div class="tag ${t.type}"></div>
+      <div class="info">
+        <div class="desc">${escapeHtml(t.description)}</div>
+        <div class="meta">${dayNum} ${MONTHS_SHORT[txMonth]} · ${labels[t.type]}${t.recurringId ? ' · ↻' : ''} ${catBadge} ${srcBadge} ${potBadge}</div>
+      </div>
+      <div class="amount ${t.type}">${sign}${Number(t.amount).toLocaleString('ro-RO')} lei</div>
+      <button class="del" data-id="${t.id}">✕</button>
+    `;
+    row.querySelector('.del').addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteTransaction(t.id);
+    });
+    row.addEventListener('click', () => openEditModal(t));
+    list.appendChild(row);
+  });
+}
+
+function applyTxSearch(){
+  const q = (document.getElementById('txSearch').value || '').trim().toLowerCase();
+  const filtered = q ? lastMonthTx.filter(t => t.description.toLowerCase().includes(q)) : lastMonthTx;
+  populateTxList('txListFull', filtered);
+  document.getElementById('txCountFull').textContent = filtered.length;
+}
+document.getElementById('txSearch').addEventListener('input', applyTxSearch);
+
+
+async function deleteTransaction(id){
+  const t = data.transactions.find(x => x.id === id);
+  if(!t) return;
+
+  if(t.type === 'cheltuiala' && t.fundedBy === 'accesibile'){
+    const pot = data.savingsPots.find(p => p.pinned);
+    if(pot){
+      pot.balance += Number(t.amount);
+      data.savingsLog.push({ id: uid(), potId: pot.id, type:'depunere', amount: Number(t.amount), date: todayStr(), note:'Corectare — cheltuială ștearsă' });
+    }
+  }
+
+  if(t.type === 'cheltuiala' && t.toPot){
+    const pot = data.savingsPots.find(p => p.id === t.toPot);
+    if(pot){
+      pot.balance = Math.max(0, pot.balance - Number(t.amount));
+      data.savingsLog.push({ id: uid(), potId: pot.id, type:'retragere', amount: Number(t.amount), date: todayStr(), note:'Corectare — transfer anulat' });
+    }
+  }
+
+  if(t.type === 'venit' && t.toPot){
+    const pot = data.savingsPots.find(p => p.id === t.toPot);
+    if(pot){
+      pot.balance = Math.max(0, pot.balance - Number(t.amount));
+      data.savingsLog.push({ id: uid(), potId: pot.id, type:'retragere', amount: Number(t.amount), date: todayStr(), note:'Corectare — venit alocat, șters' });
+    }
+  }
+
+  if(t.type === 'venit' && t.fromPot){
+    const pot = data.savingsPots.find(p => p.id === t.fromPot);
+    if(pot){
+      pot.balance += Number(t.amount);
+      data.savingsLog.push({ id: uid(), potId: pot.id, type:'depunere', amount: Number(t.amount), date: todayStr(), note:'Corectare — retragere anulată' });
+    }
+  }
+
+  if(t.recurringId){
+    // recurring item: wipe it from every month, and stop the rule so it won't come back
+    const ok = await showConfirm(`„${t.description}" este recurentă. Ștergi din toate lunile (trecute și viitoare)?`, 'Ștergi recurența?', 'Șterge peste tot', true);
+    if(!ok) return;
+    const recId = t.recurringId;
+    data.transactions = data.transactions.filter(x => x.recurringId !== recId);
+    data.recurring = data.recurring.filter(r => r.id !== recId);
+    saveData();
+    render();
+    return;
+  }
+
+  data.transactions = data.transactions.filter(x => x.id !== id);
+  saveData();
+  render();
+}
+
+/* ================= TREND CHART (6 months) ================= */
+function renderTrendChart(){
+  const container = document.getElementById('trendChart');
+  const tooltip = document.getElementById('trendTooltip');
+  tooltip.classList.remove('show');
+  container.innerHTML = '';
+
+  const monthsData = [];
+  for(let i=5;i>=0;i--){
+    let y=viewYear, m=viewMonth-i;
+    while(m<0){ m+=12; y--; }
+    const key = `${y}-${pad(m+1)}`;
+    const txs = data.transactions.filter(t=>t.date.startsWith(key));
+    let venit=0, cheltuiala=0;
+    txs.forEach(t=>{
+      if(t.type==='venit' && !t.toPot) venit+=Number(t.amount);
+      else if(t.type==='cheltuiala' && t.fundedBy !== 'accesibile') cheltuiala+=Number(t.amount);
+    });
+    monthsData.push({y, m, venit, cheltuiala, isCurrent: (y===viewYear && m===viewMonth)});
+  }
+  const max = Math.max(1, ...monthsData.flatMap(d=>[d.venit,d.cheltuiala]));
+  const maxH = 92;
+
+  monthsData.forEach(d => {
+    const col = document.createElement('div');
+    col.className = 'trend-col' + (d.isCurrent ? ' current' : '');
+    const bars = document.createElement('div');
+    bars.className = 'trend-bars';
+    const bV = document.createElement('div');
+    bV.className = 'trend-bar venit';
+    bV.style.height = Math.max(3, (d.venit/max)*maxH) + 'px';
+    const bC = document.createElement('div');
+    bC.className = 'trend-bar cheltuiala';
+    bC.style.height = Math.max(3, (d.cheltuiala/max)*maxH) + 'px';
+    bars.appendChild(bV); bars.appendChild(bC);
+    col.appendChild(bars);
+    const lbl = document.createElement('div');
+    lbl.className = 'trend-lbl';
+    lbl.textContent = MONTHS_SHORT[d.m];
+    col.appendChild(lbl);
+    col.addEventListener('click', () => {
+      const diff = d.venit - d.cheltuiala;
+      tooltip.innerHTML = `<b>${MONTHS[d.m]} ${d.y}</b><br>
+        Venituri: <b style="color:var(--green)">${money(d.venit)}</b><br>
+        Cheltuieli din venituri: <b style="color:var(--red)">${money(d.cheltuiala)}</b><br>
+        Diferență: <b style="color:${diff>=0?'var(--green)':'var(--red)'}">${diff>=0?'+':''}${money(diff)}</b>`;
+      tooltip.classList.add('show');
+    });
+    container.appendChild(col);
+  });
+
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      container.querySelectorAll('.trend-bar').forEach((b,i)=>{
+        setTimeout(()=> b.classList.add('show'), i*35);
+      });
+    });
+  });
+}
+
+/* ================= DONUT CHART (categories, current month) ================= */
+function renderDonutChart(monthTx){
+  const holder = document.getElementById('donutHolder');
+  const cheltuieli = monthTx.filter(t => t.type === 'cheltuiala' && !t.toPot);
+  if(cheltuieli.length === 0){
+    holder.innerHTML = '<div class="empty-chart">Nicio cheltuială înregistrată încă luna aceasta.</div>';
+    return;
+  }
+  const groups = {};
+  cheltuieli.forEach(t => {
+    const c = t.category && CATEGORY_META[t.category] ? t.category : 'altele';
+    groups[c] = (groups[c]||0) + Number(t.amount);
+  });
+  const total = Object.values(groups).reduce((a,b)=>a+b,0);
+  const entries = Object.entries(groups).sort((a,b)=>b[1]-a[1]);
+
+  const r = 48, C = 2*Math.PI*r;
+  let cumulative = 0;
+  let circles = '';
+  entries.forEach(([cat,val]) => {
+    const frac = val/total;
+    const meta = CATEGORY_META[cat];
+    const rotate = -90 + cumulative*360;
+    circles += `<circle data-cat="${cat}" cx="60" cy="60" r="${r}" fill="none" stroke="${meta.color}"
+      stroke-width="16" stroke-dasharray="${C}" stroke-dashoffset="${C}"
+      transform="rotate(${rotate} 60 60)" data-target="${C*(1-frac)}"></circle>`;
+    cumulative += frac;
+  });
+
+  holder.innerHTML = `
+    <div class="donut-wrap">
+      <div class="donut-svg-holder">
+        <svg viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="${r}" fill="none" stroke="var(--rule)" stroke-width="16"></circle>
+          ${circles}
+        </svg>
+        <div class="donut-center">
+          <div class="t">Total</div>
+          <div class="v">${money(total)}</div>
+        </div>
+      </div>
+      <div class="donut-legend" id="donutLegend"></div>
+    </div>
+  `;
+
+  const legend = document.getElementById('donutLegend');
+  entries.forEach(([cat,val]) => {
+    const meta = CATEGORY_META[cat];
+    const pct = Math.round((val/total)*100);
+    const row = document.createElement('div');
+    row.className = 'dl-row';
+    row.dataset.cat = cat;
+    row.innerHTML = `<i class="dl-dot" style="background:${meta.color}"></i>
+      <span class="dl-name">${meta.label}</span>
+      <span class="dl-val">${money(val)} · ${pct}%</span>`;
+    row.addEventListener('click', () => {
+      const circle = holder.querySelector(`circle[data-cat="${cat}"]`);
+      const allCircles = holder.querySelectorAll('circle[data-cat]');
+      const isActive = circle.classList.contains('hl');
+      allCircles.forEach(c => { c.classList.remove('hl'); c.style.opacity=1; c.setAttribute('stroke-width','16'); });
+      if(!isActive){
+        allCircles.forEach(c => { if(c!==circle) c.style.opacity=0.35; });
+        circle.classList.add('hl');
+        circle.setAttribute('stroke-width','19');
+      }
+    });
+    legend.appendChild(row);
+  });
+
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      holder.querySelectorAll('circle[data-target]').forEach(c => {
+        c.style.strokeDashoffset = c.dataset.target;
+      });
+    });
+  });
+}
+
+/* ================= BUDGETS ================= */
+function renderBudgets(monthTx){
+  const container = document.getElementById('budgetsList');
+  if(!container) return;
+  const spentByCat = {};
+  monthTx.filter(t => t.type === 'cheltuiala' && !t.toPot).forEach(t => {
+    const c = t.category && CATEGORY_META[t.category] ? t.category : 'altele';
+    spentByCat[c] = (spentByCat[c] || 0) + Number(t.amount);
+  });
+
+  container.innerHTML = '';
+  Object.keys(CATEGORY_META).forEach(catKey => {
+    const meta = CATEGORY_META[catKey];
+    const spent = spentByCat[catKey] || 0;
+    const limit = data.budgets[catKey];
+    const row = document.createElement('div');
+    row.className = 'budget-row';
+
+    if(limit){
+      const pct = Math.min(100, Math.round((spent/limit)*100));
+      const over = spent > limit;
+      const barColor = over ? 'var(--red)' : (pct >= 80 ? 'var(--brass)' : meta.color);
+      row.innerHTML = `
+        <div class="budget-top">
+          <span class="budget-name"><i class="dl-dot" style="background:${meta.color}"></i>${meta.label}</span>
+          <span class="budget-amt" style="${over ? 'color:var(--red); font-weight:700;' : ''}">${money(spent)} / ${money(limit)}</span>
+        </div>
+        <div class="budget-bar-track"><div class="budget-bar-fill" style="width:0%; background:${barColor};" data-target="${pct}"></div></div>
+      `;
+    } else {
+      row.innerHTML = `
+        <div class="budget-top">
+          <span class="budget-name"><i class="dl-dot" style="background:${meta.color}"></i>${meta.label}</span>
+          <span class="budget-amt">${spent > 0 ? money(spent) + ' · ' : ''}fără limită</span>
+        </div>
+      `;
+    }
+    row.addEventListener('click', () => openBudgetModal(catKey));
+    container.appendChild(row);
+  });
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      container.querySelectorAll('.budget-bar-fill[data-target]').forEach(el => {
+        el.style.width = el.dataset.target + '%';
+      });
+    });
+  });
+}
+
+const overlayBudget = document.getElementById('overlayBudget');
+let budgetCatKey = null;
+function openBudgetModal(catKey){
+  budgetCatKey = catKey;
+  const meta = CATEGORY_META[catKey];
+  document.querySelector('#overlayBudget h3').innerHTML = `Buget: ${meta.label} <button id="closeBudget">×</button>`;
+  document.getElementById('closeBudget').addEventListener('click', () => overlayBudget.classList.remove('show'));
+  document.getElementById('budgetAmount').value = data.budgets[catKey] || '';
+  overlayBudget.classList.add('show');
+}
+overlayBudget.addEventListener('click', (e) => { if(e.target === overlayBudget) overlayBudget.classList.remove('show'); });
+document.getElementById('budgetSave').addEventListener('click', () => {
+  const amt = parseFloat(document.getElementById('budgetAmount').value);
+  if(amt && amt > 0){
+    data.budgets[budgetCatKey] = amt;
+    saveData();
+  }
+  overlayBudget.classList.remove('show');
+  render();
+});
+document.getElementById('budgetClear').addEventListener('click', () => {
+  delete data.budgets[budgetCatKey];
+  saveData();
+  overlayBudget.classList.remove('show');
+  render();
+});
+
+/* ================= MONTH NAV ================= */
+document.getElementById('prevMonth').addEventListener('click', () => {
+  viewMonth--; if(viewMonth < 0){ viewMonth = 11; viewYear--; }
+  render();
+});
+document.getElementById('nextMonth').addEventListener('click', () => {
+  viewMonth++; if(viewMonth > 11){ viewMonth = 0; viewYear++; }
+  render();
+});
+document.getElementById('prevMonth2').addEventListener('click', () => {
+  viewMonth--; if(viewMonth < 0){ viewMonth = 11; viewYear--; }
+  render();
+});
+document.getElementById('nextMonth2').addEventListener('click', () => {
+  viewMonth++; if(viewMonth > 11){ viewMonth = 0; viewYear++; }
+  render();
+});
+
+/* ================= TAB SWITCHING ================= */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById(btn.dataset.view).classList.add('active');
+    document.getElementById('btnAdd').style.display = btn.dataset.view === 'viewSavings' ? 'none' : 'flex';
+    if(btn.dataset.view === 'viewSavings') renderSavings();
+    if(btn.dataset.view === 'viewTx') applyTxSearch();
+  });
+});
+
+/* ================= ADD TRANSACTION MODAL ================= */
+const overlayAdd = document.getElementById('overlayAdd');
+let currentType = 'cheltuiala';
+let currentSource = 'venit';
+let editingTxId = null;
+
+function openAddModal(dateStr){
+  editingTxId = null;
+  document.querySelector('#overlayAdd h3').innerHTML = 'Adaugă înregistrare <button id="closeAdd">×</button>';
+  document.getElementById('closeAdd').addEventListener('click', closeAddModal);
+  document.getElementById('fSave').textContent = 'Salvează';
+  document.getElementById('fDelWrap').style.display = 'none';
+  document.getElementById('fAmount').value = '';
+  document.getElementById('fDesc').value = '';
+  document.getElementById('fDate').value = dateStr || fmtDate(viewYear, viewMonth, Math.min(today.getDate(), daysInMonth(viewYear,viewMonth)));
+  document.getElementById('fRecurring').checked = false;
+  document.getElementById('fCat').value = 'altele';
+  document.getElementById('fErr').style.display = 'none';
+  document.getElementById('fErr').style.color = '';
+  populateDestDropdown('');
+  setType('cheltuiala');
+  setSource('venit');
+  overlayAdd.classList.add('show');
+}
+
+function openEditModal(t){
+  editingTxId = t.id;
+  document.querySelector('#overlayAdd h3').innerHTML = 'Editează înregistrare <button id="closeAdd">×</button>';
+  document.getElementById('closeAdd').addEventListener('click', closeAddModal);
+  document.getElementById('fSave').textContent = 'Salvează modificările';
+  document.getElementById('fDelWrap').style.display = 'block';
+  document.getElementById('fAmount').value = t.amount;
+  document.getElementById('fDesc').value = t.description;
+  document.getElementById('fDate').value = t.date;
+  document.getElementById('fCat').value = t.category || 'altele';
+  document.getElementById('fErr').style.display = 'none';
+  document.getElementById('fErr').style.color = '';
+  setType(t.type);
+  if(t.type === 'venit'){
+    populateDestDropdown(t.toPot || '');
+  }
+  setSource(t.fundedBy === 'accesibile' ? 'economii' : 'venit');
+  // editing a single instance never touches the recurring template itself
+  document.getElementById('fRecurring').checked = false;
+  document.getElementById('fRecurring').closest('.checkbox-row').style.display = 'none';
+
+  // system-generated transfer link (fromPot / toPot on a cheltuială) — lock the type
+  // switcher so it can't be flipped mid-edit and corrupt the link.
+  const isLinked = !!(t.fromPot || (t.type === 'cheltuiala' && t.toPot));
+  document.querySelectorAll('#typeSeg button').forEach(b => {
+    b.disabled = isLinked;
+    b.style.opacity = isLinked ? 0.5 : 1;
+  });
+
+  if(t.fromPot){
+    // system-generated by "Retragere" on a savings pot — pot link isn't reassignable here
+    const pot = data.savingsPots.find(p => p.id === t.fromPot);
+    document.getElementById('fDestWrap').style.display = 'none';
+    document.getElementById('fErr').textContent = `Provine dintr-o retragere din „${pot ? pot.name : 'un cont'}". Poți corecta suma sau data — contul se ajustează automat.`;
+    document.getElementById('fErr').style.display = 'block';
+    document.getElementById('fErr').style.color = 'var(--ink-soft)';
+  } else if(t.type === 'cheltuiala' && t.toPot){
+    // system-generated by "Mută bani" (Disponibil → cont)
+    const pot = data.savingsPots.find(p => p.id === t.toPot);
+    document.getElementById('fCatWrap').style.display = 'none';
+    document.getElementById('fSourceWrap').style.display = 'none';
+    document.getElementById('fErr').textContent = `Este un transfer către „${pot ? pot.name : 'un cont'}". Poți corecta suma sau data — contul se ajustează automat.`;
+    document.getElementById('fErr').style.display = 'block';
+    document.getElementById('fErr').style.color = 'var(--ink-soft)';
+  } else if(t.recurringId){
+    document.getElementById('fErr').textContent = 'Faci parte dintr-o recurență — se modifică doar luna aceasta. Pentru viitor, oprește recurența din ↻ și adaugă manual sumele care variază.';
+    document.getElementById('fErr').style.display = 'block';
+    document.getElementById('fErr').style.color = 'var(--ink-soft)';
+  }
+  overlayAdd.classList.add('show');
+}
+function closeAddModal(){
+  overlayAdd.classList.remove('show'); editingTxId = null;
+  document.querySelectorAll('#typeSeg button').forEach(b => { b.disabled = false; b.style.opacity = 1; });
+}
+
+function populateDestDropdown(selectedValue){
+  const sel = document.getElementById('fDestPot');
+  sel.innerHTML = '<option value="">Bani disponibili</option>';
+  data.savingsPots.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    sel.appendChild(opt);
+  });
+  sel.value = selectedValue || '';
+  toggleDestNote();
+}
+function toggleDestNote(){
+  const val = document.getElementById('fDestPot').value;
+  const note = document.getElementById('fDestNote');
+  const recRow = document.getElementById('fRecurring').closest('.checkbox-row');
+  if(val){
+    note.textContent = 'Suma merge direct în acest cont — nu se adaugă la banii disponibili de cheltuit.';
+    note.style.display = 'block';
+    document.getElementById('fRecurring').checked = false;
+    if(recRow) recRow.style.display = 'none';
+  } else {
+    note.style.display = 'none';
+    if(recRow) recRow.style.display = 'flex';
+  }
+}
+document.getElementById('fDestPot').addEventListener('change', toggleDestNote);
+
+function setType(t){
+  currentType = t;
+  document.querySelectorAll('#typeSeg button').forEach(b => {
+    b.classList.toggle('active', b.dataset.type === t);
+  });
+  document.getElementById('fCatWrap').style.display = t === 'cheltuiala' ? 'block' : 'none';
+  document.getElementById('fSourceWrap').style.display = t === 'cheltuiala' ? 'block' : 'none';
+  document.getElementById('fDestWrap').style.display = t === 'venit' ? 'block' : 'none';
+  if(t !== 'cheltuiala') setSource('venit');
+  if(t !== 'venit') populateDestDropdown('');
+}
+document.getElementById('typeSeg').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(btn) setType(btn.dataset.type);
+});
+
+function setSource(s){
+  currentSource = s;
+  document.querySelectorAll('#sourceSeg button').forEach(b => {
+    b.classList.toggle('active', b.dataset.source === s);
+  });
+  const recRow = document.getElementById('fRecurring').closest('.checkbox-row');
+  if(s === 'economii'){
+    document.getElementById('fRecurring').checked = false;
+    recRow.style.display = 'none';
+  } else {
+    recRow.style.display = 'flex';
+  }
+}
+document.getElementById('sourceSeg').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(btn) setSource(btn.dataset.source);
+});
+
+document.getElementById('btnAdd').addEventListener('click', () => openAddModal(selectedDate));
+document.getElementById('closeAdd').addEventListener('click', closeAddModal);
+overlayAdd.addEventListener('click', (e) => { if(e.target === overlayAdd) closeAddModal(); });
+
+document.getElementById('fSave').addEventListener('click', () => {
+  const amount = parseFloat(document.getElementById('fAmount').value);
+  const desc = document.getElementById('fDesc').value.trim();
+  const dateVal = document.getElementById('fDate').value;
+  const recurring = document.getElementById('fRecurring').checked;
+  const category = document.getElementById('fCat').value;
+  const errEl = document.getElementById('fErr');
+
+  if(!amount || amount <= 0 || !desc || !dateVal){
+    errEl.style.color = '';
+    errEl.textContent = 'Completează suma și descrierea.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const catToStore = currentType === 'cheltuiala' ? category : undefined;
+  const fundedByAccesibile = currentType === 'cheltuiala' && currentSource === 'economii';
+  const accessiblePot = data.savingsPots.find(p => p.pinned);
+  const destPotId = currentType === 'venit' ? document.getElementById('fDestPot').value : '';
+
+  /* ---------- EDIT MODE ---------- */
+  if(editingTxId){
+    const tx = data.transactions.find(x => x.id === editingTxId);
+    const oldFundedBy = tx.fundedBy || null;
+    const newFundedBy = fundedByAccesibile ? 'accesibile' : null;
+
+    if(oldFundedBy === 'accesibile' && newFundedBy === 'accesibile'){
+      const delta = amount - Number(tx.amount);
+      if(delta > accessiblePot.balance){
+        errEl.style.color = '';
+        errEl.textContent = `Nu ai suficienți bani în Economii accesibile pentru diferență — sold: ${money(accessiblePot.balance)}.`;
+        errEl.style.display = 'block';
+        return;
+      }
+      accessiblePot.balance -= delta;
+    } else if(oldFundedBy === 'accesibile' && newFundedBy !== 'accesibile'){
+      accessiblePot.balance += Number(tx.amount);
+    } else if(oldFundedBy !== 'accesibile' && newFundedBy === 'accesibile'){
+      if(amount > accessiblePot.balance){
+        errEl.style.color = '';
+        errEl.textContent = `Nu ai suficienți bani în Economii accesibile — sold: ${money(accessiblePot.balance)}.`;
+        errEl.style.display = 'block';
+        return;
+      }
+      accessiblePot.balance -= amount;
+    }
+
+    // fromPot: link preserved from a "Retragere" action — only the amount can move the needle
+    if(tx.fromPot){
+      const fp = data.savingsPots.find(p => p.id === tx.fromPot);
+      if(fp){
+        const delta = amount - Number(tx.amount);
+        if(delta > fp.balance){
+          errEl.style.color = '';
+          errEl.textContent = `Diferența depășește soldul contului „${fp.name}" — sold: ${money(fp.balance)}.`;
+          errEl.style.display = 'block';
+          return;
+        }
+        fp.balance -= delta;
+      }
+    }
+
+    // toPot: destination chosen via the "Destinație" dropdown (venit), or preserved as-is
+    // for system-generated transfer-out cheltuieli (no UI field to change it there).
+    const oldToPot = tx.toPot || null;
+    const newToPot = currentType === 'venit' ? (destPotId || null) : oldToPot;
+    if(oldToPot !== newToPot){
+      if(oldToPot){
+        const op = data.savingsPots.find(p => p.id === oldToPot);
+        if(op) op.balance = Math.max(0, op.balance - Number(tx.amount));
+      }
+      if(newToPot){
+        const np = data.savingsPots.find(p => p.id === newToPot);
+        if(np) np.balance += amount;
+      }
+    } else if(oldToPot && Number(tx.amount) !== amount){
+      const p = data.savingsPots.find(x => x.id === oldToPot);
+      if(p) p.balance = Math.max(0, p.balance + (amount - Number(tx.amount)));
+    }
+
+    tx.type = currentType;
+    tx.amount = amount;
+    tx.description = desc;
+    tx.date = dateVal;
+    tx.category = catToStore;
+    tx.fundedBy = newFundedBy;
+    tx.toPot = newToPot;
+    saveData();
+    closeAddModal();
+    const d = new Date(dateVal);
+    viewYear = d.getFullYear(); viewMonth = d.getMonth();
+    render();
+    return;
+  }
+
+  /* ---------- ADD MODE ---------- */
+  if(fundedByAccesibile){
+    if(amount > accessiblePot.balance){
+      errEl.style.color = '';
+      errEl.textContent = `Nu ai suficienți bani în Economii accesibile — sold: ${money(accessiblePot.balance)}.`;
+      errEl.style.display = 'block';
+      return;
+    }
+  }
+  errEl.style.display = 'none';
+
+  const toPotId = (currentType === 'venit' && destPotId) ? destPotId : null;
+
+  if(recurring){
+    const recId = uid();
+    const day = Number(dateVal.slice(8,10));
+    data.recurring.push({
+      id: recId, type: currentType, amount, description: desc, category: catToStore,
+      dayOfMonth: day, startDate: dateVal, skippedMonths: []
+    });
+    data.transactions.push({
+      id: uid(), type: currentType, amount, description: desc, category: catToStore,
+      date: dateVal, recurringId: recId
+    });
+  } else {
+    data.transactions.push({
+      id: uid(), type: currentType, amount, description: desc, category: catToStore,
+      date: dateVal, recurringId: null, fundedBy: fundedByAccesibile ? 'accesibile' : null,
+      toPot: toPotId
+    });
+  }
+
+  if(fundedByAccesibile){
+    accessiblePot.balance -= amount;
+    data.savingsLog.push({ id: uid(), potId: accessiblePot.id, type:'retragere', amount, date: dateVal, note:`Cheltuială: ${desc}` });
+  }
+
+  if(toPotId){
+    const tp = data.savingsPots.find(p => p.id === toPotId);
+    if(tp){
+      tp.balance += amount;
+      data.savingsLog.push({ id: uid(), potId: tp.id, type:'depunere', amount, date: dateVal, note:`Venit alocat: ${desc}` });
+    }
+  }
+
+  saveData();
+  closeAddModal();
+  const d = new Date(dateVal);
+  viewYear = d.getFullYear(); viewMonth = d.getMonth();
+  render();
+});
+
+document.getElementById('fDelete').addEventListener('click', async () => {
+  const idToDelete = editingTxId;
+  if(!idToDelete) return;
+  closeAddModal();
+  await deleteTransaction(idToDelete);
+});
+
+/* ================= RECURRING MANAGER ================= */
+const overlayRec = document.getElementById('overlayRec');
+document.getElementById('btnRecurring').addEventListener('click', () => {
+  renderRecurringList();
+  overlayRec.classList.add('show');
+});
+document.getElementById('closeRec').addEventListener('click', () => overlayRec.classList.remove('show'));
+overlayRec.addEventListener('click', (e) => { if(e.target === overlayRec) overlayRec.classList.remove('show'); });
+
+function renderRecurringList(){
+  const el = document.getElementById('recList');
+  if(data.recurring.length === 0){
+    el.innerHTML = '<div class="empty-state">Nu ai nicio înregistrare recurentă.</div>';
+    return;
+  }
+  const labels = {venit:'Venit', cheltuiala:'Cheltuială'};
+  el.innerHTML = '';
+  data.recurring.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'rec-item';
+    row.innerHTML = `
+      <div class="rinfo"><strong>${escapeHtml(r.description)}</strong><br>
+      <span style="color:var(--ink-soft)">${labels[r.type]} · ${Number(r.amount).toLocaleString('ro-RO')} lei · ziua ${r.dayOfMonth}</span></div>
+      <button class="rdel" data-id="${r.id}">Oprește</button>
+    `;
+    row.querySelector('.rdel').addEventListener('click', () => {
+      data.recurring = data.recurring.filter(x => x.id !== r.id);
+      saveData();
+      renderRecurringList();
+      render();
+    });
+    el.appendChild(row);
+  });
+}
+
+/* ================= SAVINGS TAB ================= */
+function renderSavings(){
+  const list = document.getElementById('potsList');
+  list.innerHTML = '';
+  const pinned = data.savingsPots.find(p => p.pinned);
+  const others = data.savingsPots.filter(p => !p.pinned);
+
+  [pinned, ...others].forEach(pot => {
+    if(!pot) return;
+    const card = document.createElement('div');
+    card.className = 'pot-card' + (pot.pinned ? ' pinned' : '');
+    const log = data.savingsLog.filter(l => l.potId === pot.id).slice().reverse().slice(0,8);
+    card.innerHTML = `
+      <div class="pot-top">
+        <div class="pot-name"><span class="picon">${pot.pinned ? ICONS.coin : ICONS.trending}</span>${escapeHtml(pot.name)}</div>
+      </div>
+      <div class="pot-bal">${money(pot.balance)}</div>
+      <div class="pot-sub">${pot.pinned ? 'Bani la care ai acces oricând' : 'Cont separat — nu afectează foaia principală'}</div>
+      <div class="pot-actions">
+        <button class="secondary" data-act="add">+ Adaugă</button>
+        ${pot.pinned ? '<button data-act="retragere-pinned">Retragere</button>' : ''}
+        ${!pot.pinned ? '<button data-act="withdraw">Retragere</button>' : ''}
+        ${!pot.pinned ? `<button class="danger" data-act="del"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}
+      </div>
+      ${pot.pinned ? `<div class="pot-actions" style="margin-top:6px;">
+        <button class="warn" data-act="eliminare-pinned">Elimină sumă (corectare)</button>
+      </div>` : ''}
+      <div class="pot-log" id="log-${pot.id}">
+        ${log.length ? log.map(l => `<div class="lrow"><span>${l.date} · ${l.type==='depunere'?'Depunere':'Retragere'}${l.note?' — '+escapeHtml(l.note):''}</span><b>${l.type==='depunere'?'+':'-'}${Number(l.amount).toLocaleString('ro-RO')} lei</b></div>`).join('') : '<div class="lrow">Niciun istoric încă.</div>'}
+      </div>
+    `;
+    card.querySelector('.pot-bal').addEventListener('click', () => {
+      document.getElementById('log-'+pot.id).classList.toggle('show');
+    });
+    card.querySelector('[data-act="add"]').addEventListener('click', () => openDepositModal(pot.id));
+    const wd = card.querySelector('[data-act="withdraw"]');
+    if(wd) wd.addEventListener('click', () => openWithdrawModal(pot.id));
+    const del = card.querySelector('[data-act="del"]');
+    if(del) del.addEventListener('click', () => deletePot(pot.id));
+    const retP = card.querySelector('[data-act="retragere-pinned"]');
+    if(retP) retP.addEventListener('click', () => openPinnedOutModal('retragere'));
+    const elimP = card.querySelector('[data-act="eliminare-pinned"]');
+    if(elimP) elimP.addEventListener('click', () => openPinnedOutModal('eliminare'));
+    list.appendChild(card);
+  });
+}
+
+async function deletePot(potId){
+  const pot = data.savingsPots.find(p => p.id === potId);
+  if(!pot) return;
+  if(pot.balance > 0){
+    await showAlert(`Golește contul înainte să-l ștergi (are încă ${money(pot.balance)}). Fă o retragere mai întâi.`, 'Contul nu e gol');
+    return;
+  }
+  const ok = await showConfirm(`Ștergi contul „${pot.name}"? Acțiunea nu poate fi anulată.`, 'Ștergi contul?', 'Șterge contul', true);
+  if(!ok) return;
+  data.savingsPots = data.savingsPots.filter(p => p.id !== potId);
+  data.savingsLog = data.savingsLog.filter(l => l.potId !== potId);
+  saveData();
+  renderSavings();
+}
+
+/* add pot */
+const overlayAddPot = document.getElementById('overlayAddPot');
+document.getElementById('btnAddPot').addEventListener('click', () => {
+  document.getElementById('potName').value = '';
+  document.getElementById('potErr').style.display = 'none';
+  overlayAddPot.classList.add('show');
+});
+document.getElementById('closeAddPot').addEventListener('click', () => overlayAddPot.classList.remove('show'));
+overlayAddPot.addEventListener('click', (e)=>{ if(e.target===overlayAddPot) overlayAddPot.classList.remove('show'); });
+document.getElementById('potSave').addEventListener('click', () => {
+  const name = document.getElementById('potName').value.trim();
+  if(!name){ document.getElementById('potErr').style.display = 'block'; return; }
+  data.savingsPots.push({ id: uid(), name, balance:0, locked:true, pinned:false });
+  saveData();
+  overlayAddPot.classList.remove('show');
+  renderSavings();
+});
+
+/* deposit */
+const overlayDeposit = document.getElementById('overlayDeposit');
+let depositPotId = null;
+function openDepositModal(potId){
+  depositPotId = potId;
+  const pot = data.savingsPots.find(p=>p.id===potId);
+  document.getElementById('depositTitle').innerHTML = `Adaugă în „${escapeHtml(pot.name)}” <button id="closeDeposit">×</button>`;
+  document.getElementById('closeDeposit').addEventListener('click', () => overlayDeposit.classList.remove('show'));
+  document.getElementById('depAmount').value = '';
+  document.getElementById('depNote').value = '';
+  document.getElementById('depErr').style.display = 'none';
+  overlayDeposit.classList.add('show');
+}
+overlayDeposit.addEventListener('click', (e)=>{ if(e.target===overlayDeposit) overlayDeposit.classList.remove('show'); });
+document.getElementById('depSave').addEventListener('click', () => {
+  const amount = parseFloat(document.getElementById('depAmount').value);
+  const note = document.getElementById('depNote').value.trim();
+  if(!amount || amount <= 0){ document.getElementById('depErr').style.display='block'; return; }
+  const pot = data.savingsPots.find(p=>p.id===depositPotId);
+  pot.balance += amount;
+  data.savingsLog.push({ id: uid(), potId: pot.id, type:'depunere', amount, date: todayStr(), note });
+  saveData();
+  overlayDeposit.classList.remove('show');
+  renderSavings();
+});
+
+/* withdraw (retragere) — moves money from a locked pot into the pinned accessible pot */
+const overlayWithdraw = document.getElementById('overlayWithdraw');
+let withdrawPotId = null;
+function openWithdrawModal(potId){
+  withdrawPotId = potId;
+  const pot = data.savingsPots.find(p=>p.id===potId);
+  document.getElementById('wdTitle').innerHTML = `Retragere din „${escapeHtml(pot.name)}” <button id="closeWithdraw">×</button>`;
+  document.getElementById('closeWithdraw').addEventListener('click', () => overlayWithdraw.classList.remove('show'));
+  document.getElementById('wdInfo').textContent = `Sold disponibil în acest cont: ${money(pot.balance)}. Suma retrasă se mută automat în „Economii accesibile”.`;
+  document.getElementById('wdAmount').value = '';
+  document.getElementById('wdErr').style.display = 'none';
+  overlayWithdraw.classList.add('show');
+}
+overlayWithdraw.addEventListener('click', (e)=>{ if(e.target===overlayWithdraw) overlayWithdraw.classList.remove('show'); });
+document.getElementById('wdSave').addEventListener('click', () => {
+  const amount = parseFloat(document.getElementById('wdAmount').value);
+  const pot = data.savingsPots.find(p=>p.id===withdrawPotId);
+  const errEl = document.getElementById('wdErr');
+  if(!amount || amount <= 0){
+    errEl.textContent = 'Introdu o sumă validă.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if(amount > pot.balance){
+    errEl.textContent = `Nu poți retrage mai mult decât ai — sold disponibil: ${money(pot.balance)}. Introdu altă sumă.`;
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+  const accessible = data.savingsPots.find(p => p.pinned);
+  pot.balance -= amount;
+  accessible.balance += amount;
+  const date = todayStr();
+  data.savingsLog.push({ id: uid(), potId: pot.id, type:'retragere', amount, date });
+  data.savingsLog.push({ id: uid(), potId: accessible.id, type:'depunere', amount, date, note:`Retragere din ${pot.name}` });
+  saveData();
+  overlayWithdraw.classList.remove('show');
+  renderSavings();
+});
+
+/* pinned pot: retragere (spend it) / eliminare (correction) */
+const overlayPinnedOut = document.getElementById('overlayPinnedOut');
+let pinnedOutMode = 'retragere';
+function openPinnedOutModal(mode){
+  pinnedOutMode = mode;
+  const pot = data.savingsPots.find(p => p.pinned);
+  const title = mode === 'retragere' ? 'Retragere din Economii accesibile' : 'Elimină sumă din Economii accesibile';
+  document.getElementById('pinnedOutTitle').innerHTML = `${title} <button id="closePinnedOut">×</button>`;
+  document.getElementById('closePinnedOut').addEventListener('click', () => overlayPinnedOut.classList.remove('show'));
+  document.getElementById('pinnedOutInfo').textContent = mode === 'retragere'
+    ? `Suma retrasă se mută în Disponibil, ca venit — poți s-o cheltui direct. Sold curent: ${money(pot.balance)}.`
+    : `Folosește doar ca să corectezi o sumă adăugată greșit — nu se mută nicăieri. Sold curent: ${money(pot.balance)}.`;
+  document.getElementById('pinnedOutAmount').value = '';
+  document.getElementById('pinnedOutErr').style.display = 'none';
+  document.getElementById('pinnedOutSave').textContent = mode === 'retragere' ? 'Retrage' : 'Elimină';
+  overlayPinnedOut.classList.add('show');
+}
+overlayPinnedOut.addEventListener('click', (e)=>{ if(e.target===overlayPinnedOut) overlayPinnedOut.classList.remove('show'); });
+document.getElementById('pinnedOutSave').addEventListener('click', () => {
+  const amount = parseFloat(document.getElementById('pinnedOutAmount').value);
+  const pot = data.savingsPots.find(p => p.pinned);
+  const errEl = document.getElementById('pinnedOutErr');
+  if(!amount || amount <= 0){
+    errEl.textContent = 'Introdu o sumă validă.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if(amount > pot.balance){
+    errEl.textContent = `Suma depășește soldul disponibil: ${money(pot.balance)}. Introdu altă sumă.`;
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+  pot.balance -= amount;
+  data.savingsLog.push({
+    id: uid(), potId: pot.id, type:'retragere', amount, date: todayStr(),
+    note: pinnedOutMode === 'retragere' ? 'Retragere' : 'Corectare (eliminare)'
+  });
+  if(pinnedOutMode === 'retragere'){
+    data.transactions.push({
+      id: uid(), type:'venit', amount, description:'Retragere din Economii accesibile',
+      date: todayStr(), recurringId: null, fromPot: pot.id
+    });
+  }
+  saveData();
+  overlayPinnedOut.classList.remove('show');
+  renderSavings();
+  render();
+});
+
+/* ================= TRANSFER: Disponibil <-> orice cont ================= */
+function computeAvailableForMonth(y, m){
+  const key = `${y}-${pad(m+1)}`;
+  const txs = data.transactions.filter(t => t.date.startsWith(key));
+  let v = 0, c = 0;
+  txs.forEach(t => {
+    if(t.type === 'venit' && !t.toPot) v += Number(t.amount);
+    else if(t.type === 'cheltuiala' && t.fundedBy !== 'accesibile') c += Number(t.amount);
+  });
+  return v - c;
+}
+
+const overlayTransfer = document.getElementById('overlayTransfer');
+let transferDir = 'out';
+
+function populateTransferPots(){
+  const sel = document.getElementById('transferPot');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  data.savingsPots.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    sel.appendChild(opt);
+  });
+  if(prev && data.savingsPots.some(p => p.id === prev)) sel.value = prev;
+}
+
+function setTransferDir(d){
+  transferDir = d;
+  document.querySelectorAll('#transferDirSeg button').forEach(b => b.classList.toggle('active', b.dataset.dir === d));
+  updateTransferInfo();
+}
+
+function updateTransferInfo(){
+  const info = document.getElementById('transferInfo');
+  const pot = data.savingsPots.find(p => p.id === document.getElementById('transferPot').value);
+  if(transferDir === 'out'){
+    const avail = computeAvailableForMonth(today.getFullYear(), today.getMonth());
+    info.textContent = `Disponibil acum: ${money(avail)}. Suma se scade din Disponibil și intră în contul ales.`;
+  } else {
+    info.textContent = pot ? `Sold în „${pot.name}”: ${money(pot.balance)}. Suma iese din cont și intră în Disponibil.` : '';
+  }
+}
+
+document.getElementById('btnTransfer').addEventListener('click', () => {
+  populateTransferPots();
+  setTransferDir('out');
+  document.getElementById('transferAmount').value = '';
+  document.getElementById('transferErr').style.display = 'none';
+  updateTransferInfo();
+  overlayTransfer.classList.add('show');
+});
+document.getElementById('closeTransfer').addEventListener('click', () => overlayTransfer.classList.remove('show'));
+overlayTransfer.addEventListener('click', (e) => { if(e.target === overlayTransfer) overlayTransfer.classList.remove('show'); });
+document.getElementById('transferDirSeg').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if(b) setTransferDir(b.dataset.dir);
+});
+document.getElementById('transferPot').addEventListener('change', updateTransferInfo);
+
+document.getElementById('transferSave').addEventListener('click', () => {
+  const amount = parseFloat(document.getElementById('transferAmount').value);
+  const potId = document.getElementById('transferPot').value;
+  const pot = data.savingsPots.find(p => p.id === potId);
+  const errEl = document.getElementById('transferErr');
+
+  if(!amount || amount <= 0 || !pot){
+    errEl.textContent = 'Completează suma și alege un cont.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const date = todayStr();
+
+  if(transferDir === 'out'){
+    const avail = computeAvailableForMonth(today.getFullYear(), today.getMonth());
+    if(amount > avail){
+      errEl.textContent = `Nu ai atât în Disponibil — ai doar ${money(avail)}.`;
+      errEl.style.display = 'block';
+      return;
+    }
+    errEl.style.display = 'none';
+    data.transactions.push({
+      id: uid(), type:'cheltuiala', amount, description:`Transfer către ${pot.name}`,
+      category:'altele', date, recurringId:null, fundedBy:null, toPot: pot.id
+    });
+    pot.balance += amount;
+    data.savingsLog.push({ id: uid(), potId: pot.id, type:'depunere', amount, date, note:'Transfer din Disponibil' });
+  } else {
+    if(amount > pot.balance){
+      errEl.textContent = `„${pot.name}” are doar ${money(pot.balance)}.`;
+      errEl.style.display = 'block';
+      return;
+    }
+    errEl.style.display = 'none';
+    pot.balance -= amount;
+    data.transactions.push({
+      id: uid(), type:'venit', amount, description:`Transfer din ${pot.name}`,
+      date, recurringId:null, fromPot: pot.id
+    });
+    data.savingsLog.push({ id: uid(), potId: pot.id, type:'retragere', amount, date, note:'Transfer către Disponibil' });
+  }
+
+  saveData();
+  overlayTransfer.classList.remove('show');
+  viewYear = today.getFullYear(); viewMonth = today.getMonth();
+  render();
+  renderSavings();
+});
+
+/* ================= CUSTOM DIALOG (replaces native alert/confirm) ================= */
+const overlayDialog = document.getElementById('overlayDialog');
+let dialogResolve = null;
+
+function showDialog({title, message, showCancel, confirmLabel, danger}){
+  return new Promise(resolve => {
+    dialogResolve = resolve;
+    document.getElementById('dlgTitle').textContent = title;
+    document.getElementById('dlgMsg').textContent = message;
+    const cancelBtn = document.getElementById('dlgCancelBtn');
+    const confirmBtn = document.getElementById('dlgConfirmBtn');
+    cancelBtn.style.display = showCancel ? 'block' : 'none';
+    confirmBtn.textContent = confirmLabel;
+    confirmBtn.style.background = danger ? 'var(--red)' : 'var(--ink)';
+    confirmBtn.style.color = danger ? '#2A0F0C' : 'var(--paper)';
+    overlayDialog.classList.add('show');
+  });
+}
+function showAlert(message, title){
+  return showDialog({ title: title || 'Atenție', message, showCancel:false, confirmLabel:'Am înțeles', danger:false });
+}
+function showConfirm(message, title, confirmLabel, danger){
+  return showDialog({
+    title: title || 'Confirmare', message,
+    showCancel:true, confirmLabel: confirmLabel || 'Confirmă',
+    danger: danger !== false
+  });
+}
+document.getElementById('dlgConfirmBtn').addEventListener('click', () => {
+  overlayDialog.classList.remove('show');
+  if(dialogResolve) dialogResolve(true);
+});
+document.getElementById('dlgCancelBtn').addEventListener('click', () => {
+  overlayDialog.classList.remove('show');
+  if(dialogResolve) dialogResolve(false);
+});
+overlayDialog.addEventListener('click', (e) => {
+  if(e.target === overlayDialog){
+    overlayDialog.classList.remove('show');
+    if(dialogResolve) dialogResolve(false);
+  }
+});
+
+/* ================= BACKUP: EXPORT / IMPORT ================= */
+const overlayBackup = document.getElementById('overlayBackup');
+document.getElementById('btnBackup').addEventListener('click', () => {
+  document.getElementById('backupErr').style.display = 'none';
+  overlayBackup.classList.add('show');
+});
+document.getElementById('closeBackup').addEventListener('click', () => overlayBackup.classList.remove('show'));
+overlayBackup.addEventListener('click', (e) => { if(e.target === overlayBackup) overlayBackup.classList.remove('show'); });
+
+document.getElementById('btnExportData').addEventListener('click', () => {
+  const payload = { app:'Registru', version:2, exportedAt: new Date().toISOString(), data };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `registru-backup-${todayStr()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+});
+
+document.getElementById('btnImportData').addEventListener('click', () => {
+  document.getElementById('importFileInput').click();
+});
+document.getElementById('importFileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const errEl = document.getElementById('backupErr');
+  errEl.style.display = 'none';
+  try{
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    const incoming = parsed && parsed.data ? parsed.data : parsed;
+    if(!incoming || !Array.isArray(incoming.transactions)){
+      throw new Error('format invalid');
+    }
+    const ok = await showConfirm(
+      'Acest fișier va înlocui TOATE datele curente din aplicație (tranzacții, recurențe, economii). Acțiunea nu poate fi anulată după confirmare.',
+      'Înlocuiești toate datele?', 'Da, înlocuiește', true
+    );
+    if(!ok){ e.target.value = ''; return; }
+
+    data = incoming;
+    if(!data.savingsPots) data.savingsPots = [];
+    if(!data.savingsPots.some(p => p.pinned)){
+      data.savingsPots.unshift({ id:'accesibile', name:'Economii accesibile', balance:0, locked:false, pinned:true });
+    }
+    if(!data.savingsLog) data.savingsLog = [];
+    if(!data.recurring) data.recurring = [];
+    if(!data.budgets) data.budgets = {};
+
+    saveData();
+    overlayBackup.classList.remove('show');
+    viewYear = today.getFullYear(); viewMonth = today.getMonth();
+    prevAvailable = null;
+    render();
+    await showAlert('Datele au fost restaurate cu succes.', 'Gata');
+  } catch(err){
+    errEl.textContent = 'Fișierul nu pare a fi un backup valid din Registru.';
+    errEl.style.display = 'block';
+  }
+  e.target.value = '';
+});
+
+/* ================= SERVICE WORKER ================= */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+
+/* ================= INIT ================= */
+render();
+</script>
+</body>
+</html>
