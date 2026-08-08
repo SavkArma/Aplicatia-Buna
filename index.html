@@ -40,9 +40,10 @@
   }
 
   *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
-  html,body{height:100%;}
+  html{ height:100%; }
   body{
     margin:0;
+    min-height:100%;
     background:
       repeating-linear-gradient(
         to bottom,
@@ -51,6 +52,8 @@
       );
     color:var(--ink);
     font-family:var(--font-body);
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
     overscroll-behavior-y: contain;
     -webkit-user-select:none;
     user-select:none;
@@ -255,6 +258,7 @@
   .cal-cell .dot{ width:4px; height:4px; border-radius:50%; }
   .dot.venit{ background:var(--green); }
   .dot.cheltuiala{ background:var(--red); }
+  .dot.transfer{ background:var(--brass); }
 
   /* ============ TRANSACTION LIST ============ */
   .list-section{ padding: 14px 18px 8px; }
@@ -276,6 +280,7 @@
   }
   .tag.venit{background:var(--green);}
   .tag.cheltuiala{background:var(--red);}
+  .tag.transfer{background:var(--brass);}
   .tx-row .info{ flex:1; min-width:0; }
   .tx-row .info .desc{
     font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
@@ -292,6 +297,7 @@
   }
   .amount.venit{ color:var(--green); }
   .amount.cheltuiala{ color:var(--red); }
+  .amount.transfer{ color:var(--brass); }
   .tx-row .del{
     background:none; border:none; color:var(--red); font-size:17px;
     min-width:40px; min-height:40px; display:flex; align-items:center; justify-content:center;
@@ -535,7 +541,7 @@
     </div>
     <div class="field amount">
       <label>Sumă (lei)</label>
-      <input type="number" id="fAmount" inputmode="decimal" placeholder="0">
+      <input type="text" id="fAmount" inputmode="decimal" placeholder="ex: 220,53">
     </div>
     <div class="field">
       <label>Descriere</label>
@@ -596,7 +602,7 @@
     </div>
     <div class="field amount">
       <label>Sumă (lei)</label>
-      <input type="number" id="transferAmount" inputmode="decimal" placeholder="0">
+      <input type="text" id="transferAmount" inputmode="decimal" placeholder="ex: 220,53">
     </div>
     <div class="info-note" id="transferInfo"></div>
     <div class="err" id="transferErr"></div>
@@ -610,7 +616,7 @@
     <h3 id="budgetTitle">Buget categorie <button id="closeBudget">×</button></h3>
     <div class="field amount">
       <label>Limită lunară (lei)</label>
-      <input type="number" id="budgetAmount" inputmode="decimal" placeholder="ex: 800">
+      <input type="text" id="budgetAmount" inputmode="decimal" placeholder="ex: 800">
     </div>
     <button class="save-btn" id="budgetSave">Salvează limita</button>
     <div style="height:10px;"></div>
@@ -672,7 +678,7 @@
     <h3 id="depositTitle">Adaugă bani <button id="closeDeposit">×</button></h3>
     <div class="field amount">
       <label>Sumă (lei)</label>
-      <input type="number" id="depAmount" inputmode="decimal" placeholder="0">
+      <input type="text" id="depAmount" inputmode="decimal" placeholder="ex: 220,53">
     </div>
     <div class="field">
       <label>Notă (opțional)</label>
@@ -690,7 +696,7 @@
     <div class="info-note" id="pinnedOutInfo"></div>
     <div class="field amount">
       <label>Sumă (lei)</label>
-      <input type="number" id="pinnedOutAmount" inputmode="decimal" placeholder="0">
+      <input type="text" id="pinnedOutAmount" inputmode="decimal" placeholder="ex: 220,53">
     </div>
     <div class="err" id="pinnedOutErr"></div>
     <button class="save-btn" id="pinnedOutSave">Confirmă</button>
@@ -704,7 +710,7 @@
     <div class="info-note" id="wdInfo"></div>
     <div class="field amount">
       <label>Sumă de retras (lei)</label>
-      <input type="number" id="wdAmount" inputmode="decimal" placeholder="0">
+      <input type="text" id="wdAmount" inputmode="decimal" placeholder="ex: 220,53">
     </div>
     <div class="err" id="wdErr">Suma depășește soldul acestui cont.</div>
     <button class="save-btn" id="wdSave">Retrage și mută în Economii accesibile</button>
@@ -765,13 +771,30 @@ if(!data.savingsLog) data.savingsLog = [];
 if(!data.budgets) data.budgets = {};
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+// Accepts "220,53", "220.53", "1.234,56" (RO), "1,234.56" (US), or plain "220".
+// Whichever separator (, or .) appears LAST is treated as the decimal point.
+function parseAmount(raw){
+  if(raw === null || raw === undefined) return NaN;
+  let s = String(raw).trim();
+  if(s === '') return NaN;
+  const lastComma = s.lastIndexOf(',');
+  const lastDot = s.lastIndexOf('.');
+  if(lastComma > -1 && lastDot > -1){
+    if(lastComma > lastDot) s = s.replace(/\./g, '').replace(',', '.');
+    else s = s.replace(/,/g, '');
+  } else if(lastComma > -1){
+    s = s.replace(',', '.');
+  }
+  return parseFloat(s);
+}
 function pad(n){ return n < 10 ? '0'+n : ''+n; }
 function fmtDate(y,m,d){ return `${y}-${pad(m+1)}-${pad(d)}`; }
 function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
 function todayStr(){ const t=new Date(); return fmtDate(t.getFullYear(), t.getMonth(), t.getDate()); }
 function money(n){
   const sign = n < 0 ? '-' : '';
-  return sign + Math.abs(n).toLocaleString('ro-RO', {maximumFractionDigits:0}) + ' lei';
+  return sign + Math.abs(n).toLocaleString('ro-RO', {minimumFractionDigits:0, maximumFractionDigits:2}) + ' lei';
 }
 function escapeHtml(s){
   return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -848,14 +871,17 @@ function render(){
 
   const totals = {venit:0, cheltuiala:0};
   let econSpent = 0;
-  let venitRouted = 0;
+  let transferToPots = 0;
+  let transferFromPots = 0;
   monthTx.forEach(t => {
     if(t.type === 'venit'){
-      if(t.toPot) venitRouted += Number(t.amount);
+      if(t.fromPot) transferFromPots += Number(t.amount);
+      else if(t.toPot) { /* income routed straight to a pot — never touched Disponibil either way */ }
       else totals.venit += Number(t.amount);
     }
     else if(t.type === 'cheltuiala'){
-      if(t.fundedBy === 'accesibile') econSpent += Number(t.amount);
+      if(t.toPot) transferToPots += Number(t.amount);
+      else if(t.fundedBy === 'accesibile') econSpent += Number(t.amount);
       else totals.cheltuiala += Number(t.amount);
     }
   });
@@ -867,10 +893,11 @@ function render(){
   const noteEl = document.getElementById('econSpentNote');
   const notes = [];
   if(econSpent > 0) notes.push(`${ICONS.coin} + ${money(econSpent)} cheltuiți din Economii accesibile (nu afectează suma de mai sus)`);
-  if(venitRouted > 0) notes.push(`${ICONS.coin} + ${money(venitRouted)} direcționați direct spre economii (nu intră în suma de mai sus)`);
+  if(transferToPots > 0) notes.push(`${ICONS.coin} ${money(transferToPots)} mutați spre conturi de economii — nu e o cheltuială, doar și-a schimbat locul`);
+  if(transferFromPots > 0) notes.push(`${ICONS.coin} ${money(transferFromPots)} aduși din economii — nu e un venit nou, doar și-a schimbat locul`);
   noteEl.innerHTML = notes.join('<br>');
 
-  const available = totals.venit - totals.cheltuiala;
+  const available = totals.venit - totals.cheltuiala - transferToPots + transferFromPots;
   const hero = document.getElementById('availableHero');
   const valEl = document.getElementById('availableVal');
   hero.classList.toggle('negative', available < 0);
@@ -920,11 +947,14 @@ function renderCalendar(monthTx){
     const num = document.createElement('div');
     num.textContent = d;
     cell.appendChild(num);
-    const types = new Set((byDay[d]||[]).map(t=>t.type));
+    const types = new Set((byDay[d]||[]).map(t => {
+      const isTransfer = (t.type === 'venit' && (t.toPot || t.fromPot)) || (t.type === 'cheltuiala' && t.toPot);
+      return isTransfer ? 'transfer' : t.type;
+    }));
     if(types.size){
       const dots = document.createElement('div');
       dots.className = 'dots';
-      ['venit','cheltuiala'].forEach(t=>{
+      ['venit','cheltuiala','transfer'].forEach(t=>{
         if(types.has(t)){
           const dot = document.createElement('div');
           dot.className = 'dot ' + t;
@@ -961,6 +991,9 @@ function populateTxList(containerId, monthTx){
     row.className = 'tx-row';
     const dayNum = Number(t.date.slice(8,10));
     const txMonth = Number(t.date.slice(5,7)) - 1;
+    const isTransfer = (t.type === 'venit' && (t.toPot || t.fromPot)) || (t.type === 'cheltuiala' && t.toPot);
+    const visualType = isTransfer ? 'transfer' : t.type;
+    const visualLabel = isTransfer ? 'Transfer' : labels[t.type];
     const sign = t.type === 'venit' ? '+' : '−';
     const catBadge = (t.type === 'cheltuiala' && !t.toPot && t.category && CATEGORY_META[t.category])
       ? `<span class="cat-badge">${CATEGORY_META[t.category].label}</span>` : '';
@@ -971,18 +1004,18 @@ function populateTxList(containerId, monthTx){
       potBadge = `<span class="cat-badge">${ICONS.coin} spre ${escapeHtml(p ? p.name : 'cont')}</span>`;
     } else if(t.type === 'venit' && t.fromPot){
       const p = data.savingsPots.find(x => x.id === t.fromPot);
-      potBadge = `<span class="cat-badge">${ICONS.coin} retragere din ${escapeHtml(p ? p.name : 'cont')}</span>`;
+      potBadge = `<span class="cat-badge">${ICONS.coin} din ${escapeHtml(p ? p.name : 'cont')}</span>`;
     } else if(t.type === 'cheltuiala' && t.toPot){
       const p = data.savingsPots.find(x => x.id === t.toPot);
-      potBadge = `<span class="cat-badge">${ICONS.coin} transfer spre ${escapeHtml(p ? p.name : 'cont')}</span>`;
+      potBadge = `<span class="cat-badge">${ICONS.coin} spre ${escapeHtml(p ? p.name : 'cont')}</span>`;
     }
     row.innerHTML = `
-      <div class="tag ${t.type}"></div>
+      <div class="tag ${visualType}"></div>
       <div class="info">
         <div class="desc">${escapeHtml(t.description)}</div>
-        <div class="meta">${dayNum} ${MONTHS_SHORT[txMonth]} · ${labels[t.type]}${t.recurringId ? ' · ↻' : ''} ${catBadge} ${srcBadge} ${potBadge}</div>
+        <div class="meta">${dayNum} ${MONTHS_SHORT[txMonth]} · ${visualLabel}${t.recurringId ? ' · ↻' : ''} ${catBadge} ${srcBadge} ${potBadge}</div>
       </div>
-      <div class="amount ${t.type}">${sign}${Number(t.amount).toLocaleString('ro-RO')} lei</div>
+      <div class="amount ${visualType}">${sign}${Number(t.amount).toLocaleString('ro-RO', {maximumFractionDigits:2})} lei</div>
       <button class="del" data-id="${t.id}">✕</button>
     `;
     row.querySelector('.del').addEventListener('click', (e) => {
@@ -1071,8 +1104,8 @@ function renderTrendChart(){
     const txs = data.transactions.filter(t=>t.date.startsWith(key));
     let venit=0, cheltuiala=0;
     txs.forEach(t=>{
-      if(t.type==='venit' && !t.toPot) venit+=Number(t.amount);
-      else if(t.type==='cheltuiala' && t.fundedBy !== 'accesibile') cheltuiala+=Number(t.amount);
+      if(t.type==='venit' && !t.toPot && !t.fromPot) venit+=Number(t.amount);
+      else if(t.type==='cheltuiala' && t.fundedBy !== 'accesibile' && !t.toPot) cheltuiala+=Number(t.amount);
     });
     monthsData.push({y, m, venit, cheltuiala, isCurrent: (y===viewYear && m===viewMonth)});
   }
@@ -1256,7 +1289,7 @@ function openBudgetModal(catKey){
 }
 overlayBudget.addEventListener('click', (e) => { if(e.target === overlayBudget) overlayBudget.classList.remove('show'); });
 document.getElementById('budgetSave').addEventListener('click', () => {
-  const amt = parseFloat(document.getElementById('budgetAmount').value);
+  const amt = parseAmount(document.getElementById('budgetAmount').value);
   if(amt && amt > 0){
     data.budgets[budgetCatKey] = amt;
     saveData();
@@ -1450,7 +1483,7 @@ document.getElementById('closeAdd').addEventListener('click', closeAddModal);
 overlayAdd.addEventListener('click', (e) => { if(e.target === overlayAdd) closeAddModal(); });
 
 document.getElementById('fSave').addEventListener('click', () => {
-  const amount = parseFloat(document.getElementById('fAmount').value);
+  const amount = parseAmount(document.getElementById('fAmount').value);
   const desc = document.getElementById('fDesc').value.trim();
   const dateVal = document.getElementById('fDate').value;
   const recurring = document.getElementById('fRecurring').checked;
@@ -1625,7 +1658,7 @@ function renderRecurringList(){
     row.className = 'rec-item';
     row.innerHTML = `
       <div class="rinfo"><strong>${escapeHtml(r.description)}</strong><br>
-      <span style="color:var(--ink-soft)">${labels[r.type]} · ${Number(r.amount).toLocaleString('ro-RO')} lei · ziua ${r.dayOfMonth}</span></div>
+      <span style="color:var(--ink-soft)">${labels[r.type]} · ${Number(r.amount).toLocaleString('ro-RO', {maximumFractionDigits:2})} lei · ziua ${r.dayOfMonth}</span></div>
       <button class="rdel" data-id="${r.id}">Oprește</button>
     `;
     row.querySelector('.rdel').addEventListener('click', () => {
@@ -1666,7 +1699,7 @@ function renderSavings(){
         <button class="warn" data-act="eliminare-pinned">Elimină sumă (corectare)</button>
       </div>` : ''}
       <div class="pot-log" id="log-${pot.id}">
-        ${log.length ? log.map(l => `<div class="lrow"><span>${l.date} · ${l.type==='depunere'?'Depunere':'Retragere'}${l.note?' — '+escapeHtml(l.note):''}</span><b>${l.type==='depunere'?'+':'-'}${Number(l.amount).toLocaleString('ro-RO')} lei</b></div>`).join('') : '<div class="lrow">Niciun istoric încă.</div>'}
+        ${log.length ? log.map(l => `<div class="lrow"><span>${l.date} · ${l.type==='depunere'?'Depunere':'Retragere'}${l.note?' — '+escapeHtml(l.note):''}</span><b>${l.type==='depunere'?'+':'-'}${Number(l.amount).toLocaleString('ro-RO', {maximumFractionDigits:2})} lei</b></div>`).join('') : '<div class="lrow">Niciun istoric încă.</div>'}
       </div>
     `;
     card.querySelector('.pot-bal').addEventListener('click', () => {
@@ -1733,7 +1766,7 @@ function openDepositModal(potId){
 }
 overlayDeposit.addEventListener('click', (e)=>{ if(e.target===overlayDeposit) overlayDeposit.classList.remove('show'); });
 document.getElementById('depSave').addEventListener('click', () => {
-  const amount = parseFloat(document.getElementById('depAmount').value);
+  const amount = parseAmount(document.getElementById('depAmount').value);
   const note = document.getElementById('depNote').value.trim();
   if(!amount || amount <= 0){ document.getElementById('depErr').style.display='block'; return; }
   const pot = data.savingsPots.find(p=>p.id===depositPotId);
@@ -1759,7 +1792,7 @@ function openWithdrawModal(potId){
 }
 overlayWithdraw.addEventListener('click', (e)=>{ if(e.target===overlayWithdraw) overlayWithdraw.classList.remove('show'); });
 document.getElementById('wdSave').addEventListener('click', () => {
-  const amount = parseFloat(document.getElementById('wdAmount').value);
+  const amount = parseAmount(document.getElementById('wdAmount').value);
   const pot = data.savingsPots.find(p=>p.id===withdrawPotId);
   const errEl = document.getElementById('wdErr');
   if(!amount || amount <= 0){
@@ -1803,7 +1836,7 @@ function openPinnedOutModal(mode){
 }
 overlayPinnedOut.addEventListener('click', (e)=>{ if(e.target===overlayPinnedOut) overlayPinnedOut.classList.remove('show'); });
 document.getElementById('pinnedOutSave').addEventListener('click', () => {
-  const amount = parseFloat(document.getElementById('pinnedOutAmount').value);
+  const amount = parseAmount(document.getElementById('pinnedOutAmount').value);
   const pot = data.savingsPots.find(p => p.pinned);
   const errEl = document.getElementById('pinnedOutErr');
   if(!amount || amount <= 0){
@@ -1896,7 +1929,7 @@ document.getElementById('transferDirSeg').addEventListener('click', (e) => {
 document.getElementById('transferPot').addEventListener('change', updateTransferInfo);
 
 document.getElementById('transferSave').addEventListener('click', () => {
-  const amount = parseFloat(document.getElementById('transferAmount').value);
+  const amount = parseAmount(document.getElementById('transferAmount').value);
   const potId = document.getElementById('transferPot').value;
   const pot = data.savingsPots.find(p => p.id === potId);
   const errEl = document.getElementById('transferErr');
