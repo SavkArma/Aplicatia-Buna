@@ -102,6 +102,19 @@
   }
 
   /* ============ AVAILABLE (banii ramasi) — hero, viu ============ */
+  .backup-reminder{
+    margin: 0 18px 12px;
+    background:var(--gold-soft); border:1px solid var(--brass);
+    border-radius:12px; padding:12px 14px;
+  }
+  .backup-reminder span{ font-size:12.5px; font-weight:600; color:var(--ink); display:block; margin-bottom:9px; }
+  .backup-reminder-actions{ display:flex; gap:8px; }
+  .backup-reminder-actions button{
+    flex:1; padding:8px; border-radius:8px; font-size:12px; font-weight:700; border:1.5px solid var(--brass);
+  }
+  #backupReminderBtn{ background:var(--brass); color:#1B1608; }
+  #backupReminderDismiss{ background:none; color:var(--ink-soft); border-color:var(--rule); }
+
   .available-hero{
     margin: 0 18px 14px;
     background: linear-gradient(155deg, #2E463C 0%, #223328 100%);
@@ -446,6 +459,14 @@
     <button id="nextMonth">›</button>
   </div>
 
+  <div class="backup-reminder" id="backupReminder" style="display:none;">
+    <span id="backupReminderText">Nu ai un backup recent.</span>
+    <div class="backup-reminder-actions">
+      <button id="backupReminderBtn">Fă backup acum</button>
+      <button id="backupReminderDismiss">Mai târziu</button>
+    </div>
+  </div>
+
   <div class="available-hero" id="availableHero">
     <div class="lbl">Bani rămași luna aceasta</div>
     <div class="val" id="availableVal">0 lei</div>
@@ -728,7 +749,8 @@ function freshData(){
     recurring: [],
     savingsPots: [ { id:'accesibile', name:'Economii accesibile', balance:0, locked:false, pinned:true } ],
     savingsLog: [],
-    budgets: {}
+    budgets: {},
+    lastBackupAt: null
   };
 }
 
@@ -769,6 +791,7 @@ let data = loadData();
 if(!data.savingsPots) data.savingsPots = freshData().savingsPots;
 if(!data.savingsLog) data.savingsLog = [];
 if(!data.budgets) data.budgets = {};
+if(data.lastBackupAt === undefined) data.lastBackupAt = null;
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
@@ -861,6 +884,7 @@ function animateNumber(el, from, to, duration=650){
 /* ================= RENDER: MAIN VIEW ================= */
 function render(){
   ensureRecurringForMonth(viewYear, viewMonth);
+  checkBackupReminder();
 
   document.getElementById('monthLabel').textContent = `${MONTHS[viewMonth]} ${viewYear}`;
   document.getElementById('monthLabel2').textContent = `${MONTHS[viewMonth]} ${viewYear}`;
@@ -2022,6 +2046,40 @@ overlayDialog.addEventListener('click', (e) => {
 });
 
 /* ================= BACKUP: EXPORT / IMPORT ================= */
+let backupReminderDismissedThisSession = false;
+const BACKUP_REMINDER_DAYS = 7;
+
+function checkBackupReminder(){
+  const banner = document.getElementById('backupReminder');
+  const hasData = data.transactions.length > 0 || data.savingsPots.some(p => p.balance > 0);
+  if(!hasData || backupReminderDismissedThisSession){
+    banner.style.display = 'none';
+    return;
+  }
+  let show = false;
+  let text = '';
+  if(!data.lastBackupAt){
+    show = true;
+    text = `${ICONS.coin} Nu ai făcut niciodată un backup. Un export durează 5 secunde și te scapă de riscul să pierzi tot.`;
+  } else {
+    const days = Math.floor((Date.now() - data.lastBackupAt) / (1000*60*60*24));
+    if(days >= BACKUP_REMINDER_DAYS){
+      show = true;
+      text = `${ICONS.coin} Ultimul backup a fost acum ${days} zile. Merită unul proaspăt.`;
+    }
+  }
+  document.getElementById('backupReminderText').innerHTML = text;
+  banner.style.display = show ? 'block' : 'none';
+}
+
+document.getElementById('backupReminderBtn').addEventListener('click', () => {
+  document.getElementById('btnBackup').click();
+});
+document.getElementById('backupReminderDismiss').addEventListener('click', () => {
+  backupReminderDismissedThisSession = true;
+  document.getElementById('backupReminder').style.display = 'none';
+});
+
 const overlayBackup = document.getElementById('overlayBackup');
 document.getElementById('btnBackup').addEventListener('click', () => {
   document.getElementById('backupErr').style.display = 'none';
@@ -2041,6 +2099,9 @@ document.getElementById('btnExportData').addEventListener('click', () => {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 2000);
+  data.lastBackupAt = Date.now();
+  saveData();
+  checkBackupReminder();
 });
 
 document.getElementById('btnImportData').addEventListener('click', () => {
