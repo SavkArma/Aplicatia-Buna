@@ -31,6 +31,7 @@
     --teal:#5FC3D9;
     --pink:#E070A8;
     --gray:#8A8F87;
+    --orange:#E0935F;
     --font-display: ui-serif, Georgia, "Times New Roman", serif;
     --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
     --font-mono: ui-monospace, "SF Mono", "Courier New", monospace;
@@ -545,6 +546,7 @@
       </select>
       <select id="txFilterCat" class="tx-filter-select">
         <option value="">Toate categoriile</option>
+        <option value="chirie">Chirie</option>
         <option value="mancare">Mâncare</option>
         <option value="transport">Transport</option>
         <option value="facturi">Facturi</option>
@@ -608,6 +610,7 @@
     <div class="field" id="fCatWrap">
       <label>Categorie</label>
       <select id="fCat">
+        <option value="chirie">Chirie</option>
         <option value="mancare">Mâncare</option>
         <option value="transport">Transport</option>
         <option value="facturi">Facturi</option>
@@ -900,6 +903,7 @@ function escapeHtml(s){
 const MONTHS = ['ianuarie','februarie','martie','aprilie','mai','iunie','iulie','august','septembrie','octombrie','noiembrie','decembrie'];
 const MONTHS_SHORT = ['ian','feb','mar','apr','mai','iun','iul','aug','sep','oct','noi','dec'];
 const CATEGORY_META = {
+  chirie:    { label:'Chirie',     color:'var(--orange)' },
   mancare:   { label:'Mâncare',    color:'var(--red)' },
   transport: { label:'Transport',  color:'var(--blue)' },
   facturi:   { label:'Facturi',    color:'var(--purple)' },
@@ -1438,22 +1442,28 @@ function renderBudgets(monthTx){
     const c = t.category && CATEGORY_META[t.category] ? t.category : 'altele';
     spentByCat[c] = (spentByCat[c] || 0) + Number(t.amount);
   });
+  const transferredToPots = monthTx
+    .filter(t => t.type === 'cheltuiala' && t.toPot)
+    .reduce((sum, t) => sum + Number(t.amount), 0);
+
+  const rows = Object.keys(CATEGORY_META).map(catKey => ({
+    key: catKey, label: CATEGORY_META[catKey].label, color: CATEGORY_META[catKey].color, spent: spentByCat[catKey] || 0
+  }));
+  rows.push({ key:'economii', label:'Economii', color:'var(--brass)', spent: transferredToPots });
 
   container.innerHTML = '';
-  Object.keys(CATEGORY_META).forEach(catKey => {
-    const meta = CATEGORY_META[catKey];
-    const spent = spentByCat[catKey] || 0;
-    const limit = data.budgets[catKey];
+  rows.forEach(({key, label, color, spent}) => {
+    const limit = data.budgets[key];
     const row = document.createElement('div');
     row.className = 'budget-row';
 
     if(limit){
       const pct = Math.min(100, Math.round((spent/limit)*100));
       const over = spent > limit;
-      const barColor = over ? 'var(--red)' : (pct >= 80 ? 'var(--brass)' : meta.color);
+      const barColor = over ? 'var(--red)' : (pct >= 80 ? 'var(--brass)' : color);
       row.innerHTML = `
         <div class="budget-top">
-          <span class="budget-name"><i class="dl-dot" style="background:${meta.color}"></i>${meta.label}</span>
+          <span class="budget-name"><i class="dl-dot" style="background:${color}"></i>${label}</span>
           <span class="budget-amt" style="${over ? 'color:var(--red); font-weight:700;' : ''}">${money(spent)} / ${money(limit)}</span>
         </div>
         <div class="budget-bar-track"><div class="budget-bar-fill" style="width:0%; background:${barColor};" data-target="${pct}"></div></div>
@@ -1461,12 +1471,12 @@ function renderBudgets(monthTx){
     } else {
       row.innerHTML = `
         <div class="budget-top">
-          <span class="budget-name"><i class="dl-dot" style="background:${meta.color}"></i>${meta.label}</span>
+          <span class="budget-name"><i class="dl-dot" style="background:${color}"></i>${label}</span>
           <span class="budget-amt">${spent > 0 ? money(spent) + ' · ' : ''}fără limită</span>
         </div>
       `;
     }
-    row.addEventListener('click', () => openBudgetModal(catKey));
+    row.addEventListener('click', () => openBudgetModal(key));
     container.appendChild(row);
   });
 
@@ -1483,8 +1493,8 @@ const overlayBudget = document.getElementById('overlayBudget');
 let budgetCatKey = null;
 function openBudgetModal(catKey){
   budgetCatKey = catKey;
-  const meta = CATEGORY_META[catKey];
-  document.querySelector('#overlayBudget h3').innerHTML = `Buget: ${meta.label} <button id="closeBudget">×</button>`;
+  const label = catKey === 'economii' ? 'Economii' : CATEGORY_META[catKey].label;
+  document.querySelector('#overlayBudget h3').innerHTML = `Buget: ${label} <button id="closeBudget">×</button>`;
   document.getElementById('closeBudget').addEventListener('click', () => overlayBudget.classList.remove('show'));
   document.getElementById('budgetAmount').value = data.budgets[catKey] || '';
   overlayBudget.classList.add('show');
