@@ -236,6 +236,10 @@
   .dl-row .dl-name{ flex:1; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .dl-row .dl-val{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-soft); }
   .empty-chart{ text-align:center; padding:20px 10px; color:var(--ink-soft); font-size:12.5px; }
+  .tx-filter-select{
+    flex:1; padding:9px 8px; border-radius:9px; border:1.5px solid var(--rule);
+    background:var(--card); color:var(--ink); font-size:13px; font-family:inherit;
+  }
 
   /* budgets */
   .budget-row{ padding:9px 0; border-bottom:1px solid var(--rule); cursor:pointer; }
@@ -333,6 +337,7 @@
     border-color:var(--brass);
   }
   .pot-top{ display:flex; align-items:center; justify-content:space-between; }
+  .pot-rename{ background:none; border:none; color:var(--ink-faint); font-size:15px; padding:6px; }
   .pot-name{ display:flex; align-items:center; gap:8px; font-weight:700; font-size:14.5px; }
   .pot-name .picon{ font-size:18px; }
   .pot-bal{ font-family:var(--font-mono); font-weight:700; font-size:19px; margin-top:8px; }
@@ -433,10 +438,11 @@
   .info-note{ font-size:12px; color:var(--ink-soft); line-height:1.5; margin-bottom:14px; }
 
   .rec-item{
-    display:flex; align-items:center; gap:10px; padding:9px 0;
-    border-bottom:1px solid var(--rule); font-size:13px;
+    display:flex; align-items:center; gap:8px; padding:9px 0;
+    border-bottom:1px solid var(--rule); font-size:13px; flex-wrap:wrap;
   }
-  .rec-item .rinfo{ flex:1; }
+  .rec-item .rinfo{ flex:1; min-width:100%; }
+  .rec-item .redit{ background:none; border:1.5px solid var(--rule); border-radius:8px; color:var(--ink-soft); font-size:12px; font-weight:700; padding:5px 10px;}
   .rec-item .rdel{ background:none; border:none; color:var(--red); font-size:13px; font-weight:700;}
 </style>
 </head>
@@ -445,6 +451,7 @@
 <header>
   <div class="brand">Registru<small>Buget lunar</small></div>
   <div style="display:flex; gap:8px;">
+    <button class="icon-btn" id="btnYearly" title="Rezumat anual"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="4" y1="20" x2="4" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="20" y1="20" x2="20" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg></button>
     <button class="icon-btn" id="btnBackup" title="Backup">⇅</button>
     <button class="icon-btn" id="btnRecurring" title="Recurente">↻</button>
   </div>
@@ -527,8 +534,26 @@
     <button id="nextMonth2">›</button>
   </div>
   <div style="padding: 4px 18px 12px;">
-    <input type="text" id="txSearch" placeholder="Caută după descriere..."
-      style="width:100%; padding:11px 12px; border-radius:9px; border:1.5px solid var(--rule); background:var(--card); font-size:14.5px; font-family:inherit; color:var(--ink);">
+    <input type="text" id="txSearch" placeholder="Caută după descriere (în toate lunile)..."
+      style="width:100%; padding:11px 12px; border-radius:9px; border:1.5px solid var(--rule); background:var(--card); font-size:14.5px; font-family:inherit; color:var(--ink); margin-bottom:8px;">
+    <div style="display:flex; gap:8px;">
+      <select id="txFilterType" class="tx-filter-select">
+        <option value="">Toate tipurile</option>
+        <option value="venit">Venit</option>
+        <option value="cheltuiala">Cheltuială</option>
+        <option value="transfer">Transfer</option>
+      </select>
+      <select id="txFilterCat" class="tx-filter-select">
+        <option value="">Toate categoriile</option>
+        <option value="mancare">Mâncare</option>
+        <option value="transport">Transport</option>
+        <option value="facturi">Facturi</option>
+        <option value="sanatate">Sănătate</option>
+        <option value="distractie">Distracție</option>
+        <option value="altele">Altele</option>
+      </select>
+    </div>
+    <div class="info-note" id="txFilterHint" style="display:none; margin:10px 0 0;">🔍 Cauți/filtrezi în toate lunile, nu doar în cea afișată.</div>
   </div>
   <div class="list-section" style="padding-top:0;">
     <h2>Tranzacții <span class="count" id="txCountFull">0</span></h2>
@@ -539,6 +564,11 @@
 <!-- ================= VIEW: ECONOMII ================= -->
 <section class="view" id="viewSavings">
   <div class="savings-wrap">
+    <div class="chart-card" id="savingsEvoCard" style="display:none;">
+      <h3>Evoluția economiilor <span class="tip">ultimele 6 luni</span></h3>
+      <div class="trend-chart" id="savingsEvoChart"></div>
+      <div class="legend-row" id="savingsEvoLegend" style="flex-wrap:wrap; row-gap:6px;"></div>
+    </div>
     <div id="potsList"></div>
     <button class="add-pot-btn" id="btnAddPot">+ Cont nou de economii</button>
   </div>
@@ -679,11 +709,56 @@
   </div>
 </div>
 
+<!-- YEARLY SUMMARY MODAL -->
+<div class="overlay" id="overlayYearly">
+  <div class="sheet">
+    <h3>Rezumat anual <button id="closeYearly">×</button></h3>
+    <div class="month-nav" style="padding:0 0 14px;">
+      <button id="prevYear">‹</button>
+      <div class="label" id="yearLabel">—</div>
+      <button id="nextYear">›</button>
+    </div>
+    <div class="summary" style="padding:0 0 12px;">
+      <div class="sum-card venit"><div class="lbl">Total venituri</div><div class="val" id="yearVenit">0</div></div>
+      <div class="sum-card cheltuiala"><div class="lbl">Total cheltuieli</div><div class="val" id="yearCheltuiala">0</div></div>
+    </div>
+    <div class="available-hero" id="yearNetCard" style="margin:0 0 16px; padding:16px;">
+      <div class="lbl">Economisit net în an</div>
+      <div class="val" id="yearNet" style="font-size:26px;">0 lei</div>
+    </div>
+    <div class="chart-card" style="box-shadow:none; border:1px solid var(--rule); padding:14px 8px 6px;">
+      <div class="trend-chart" id="yearlyChart" style="height:130px;"></div>
+      <div class="legend-row" style="padding-left:8px;">
+        <span><i class="legend-dot" style="background:var(--green)"></i>Venituri</span>
+        <span><i class="legend-dot" style="background:var(--red)"></i>Cheltuieli</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT RECURRING MODAL -->
+<div class="overlay" id="overlayEditRec">
+  <div class="sheet">
+    <h3>Editează recurența <button id="closeEditRec">×</button></h3>
+    <div class="field amount">
+      <label>Sumă (lei)</label>
+      <input type="text" id="editRecAmount" inputmode="decimal" placeholder="ex: 220,53">
+    </div>
+    <div class="field">
+      <label>Descriere</label>
+      <input type="text" id="editRecDesc" placeholder="ex: Chirie">
+    </div>
+    <div class="info-note" id="editRecNote"></div>
+    <div class="err" id="editRecErr"></div>
+    <button class="save-btn" id="editRecSave">Salvează</button>
+  </div>
+</div>
+
 <!-- ADD POT MODAL -->
 <div class="overlay" id="overlayAddPot">
   <div class="sheet">
-    <h3>Cont nou de economii <button id="closeAddPot">×</button></h3>
-    <div class="info-note">Ex: Bursă, Fond de urgență, Vacanță. Acest cont e separat de foaia principală — nu afectează banii rămași.</div>
+    <h3 id="addPotTitle">Cont nou de economii <button id="closeAddPot">×</button></h3>
+    <div class="info-note" id="addPotNote">Ex: Bursă, Fond de urgență, Vacanță. Acest cont e separat de foaia principală — nu afectează banii rămași.</div>
     <div class="field">
       <label>Nume cont</label>
       <input type="text" id="potName" placeholder="ex: Bursă">
@@ -836,7 +911,8 @@ const CATEGORY_META = {
 /* ================= ICON SET (consistent line icons, replace emoji) ================= */
 const ICONS = {
   coin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em" style="vertical-align:-0.125em"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/></svg>',
-  trending: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em" style="vertical-align:-0.125em"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg>'
+  trending: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em" style="vertical-align:-0.125em"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg>',
+  pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em" style="vertical-align:-0.15em"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>'
 };
 
 /* ================= STATE ================= */
@@ -1000,12 +1076,13 @@ function renderList(monthTx){
   applyTxSearch();
 }
 
-function populateTxList(containerId, monthTx){
+function populateTxList(containerId, monthTx, opts){
+  opts = opts || {};
   const list = document.getElementById(containerId);
   if(!list) return;
   list.innerHTML = '';
   if(monthTx.length === 0){
-    list.innerHTML = '<div class="empty-state">Nicio înregistrare în luna aceasta.<br>Apasă pe + sau pe o zi din calendar.</div>';
+    list.innerHTML = `<div class="empty-state">${opts.emptyText || 'Nicio înregistrare în luna aceasta.<br>Apasă pe + sau pe o zi din calendar.'}</div>`;
     return;
   }
   const sorted = [...monthTx].sort((a,b)=> b.date.localeCompare(a.date));
@@ -1015,6 +1092,7 @@ function populateTxList(containerId, monthTx){
     row.className = 'tx-row';
     const dayNum = Number(t.date.slice(8,10));
     const txMonth = Number(t.date.slice(5,7)) - 1;
+    const txYear = Number(t.date.slice(0,4));
     const isTransfer = (t.type === 'venit' && (t.toPot || t.fromPot)) || (t.type === 'cheltuiala' && t.toPot);
     const visualType = isTransfer ? 'transfer' : t.type;
     const visualLabel = isTransfer ? 'Transfer' : labels[t.type];
@@ -1033,11 +1111,12 @@ function populateTxList(containerId, monthTx){
       const p = data.savingsPots.find(x => x.id === t.toPot);
       potBadge = `<span class="cat-badge">${ICONS.coin} spre ${escapeHtml(p ? p.name : 'cont')}</span>`;
     }
+    const dateLabel = opts.showYear ? `${dayNum} ${MONTHS_SHORT[txMonth]} ${txYear}` : `${dayNum} ${MONTHS_SHORT[txMonth]}`;
     row.innerHTML = `
       <div class="tag ${visualType}"></div>
       <div class="info">
         <div class="desc">${escapeHtml(t.description)}</div>
-        <div class="meta">${dayNum} ${MONTHS_SHORT[txMonth]} · ${visualLabel}${t.recurringId ? ' · ↻' : ''} ${catBadge} ${srcBadge} ${potBadge}</div>
+        <div class="meta">${dateLabel} · ${visualLabel}${t.recurringId ? ' · ↻' : ''} ${catBadge} ${srcBadge} ${potBadge}</div>
       </div>
       <div class="amount ${visualType}">${sign}${Number(t.amount).toLocaleString('ro-RO', {maximumFractionDigits:2})} lei</div>
       <button class="del" data-id="${t.id}">✕</button>
@@ -1053,11 +1132,34 @@ function populateTxList(containerId, monthTx){
 
 function applyTxSearch(){
   const q = (document.getElementById('txSearch').value || '').trim().toLowerCase();
-  const filtered = q ? lastMonthTx.filter(t => t.description.toLowerCase().includes(q)) : lastMonthTx;
-  populateTxList('txListFull', filtered);
-  document.getElementById('txCountFull').textContent = filtered.length;
+  const typeFilter = document.getElementById('txFilterType').value;
+  const catFilter = document.getElementById('txFilterCat').value;
+  const hasActiveFilter = !!(q || typeFilter || catFilter);
+
+  let source = hasActiveFilter ? data.transactions : lastMonthTx;
+
+  if(q) source = source.filter(t => t.description.toLowerCase().includes(q));
+  if(typeFilter){
+    source = source.filter(t => {
+      const isTransfer = (t.type === 'venit' && (t.toPot || t.fromPot)) || (t.type === 'cheltuiala' && t.toPot);
+      const visualType = isTransfer ? 'transfer' : t.type;
+      return visualType === typeFilter;
+    });
+  }
+  if(catFilter){
+    source = source.filter(t => t.type === 'cheltuiala' && !t.toPot && (t.category || 'altele') === catFilter);
+  }
+
+  document.getElementById('txFilterHint').style.display = hasActiveFilter ? 'block' : 'none';
+  populateTxList('txListFull', source, {
+    showYear: hasActiveFilter,
+    emptyText: hasActiveFilter ? 'Nicio tranzacție nu se potrivește cu filtrele alese.' : undefined
+  });
+  document.getElementById('txCountFull').textContent = source.length;
 }
 document.getElementById('txSearch').addEventListener('input', applyTxSearch);
+document.getElementById('txFilterType').addEventListener('change', applyTxSearch);
+document.getElementById('txFilterCat').addEventListener('change', applyTxSearch);
 
 
 async function deleteTransaction(id){
@@ -1172,6 +1274,82 @@ function renderTrendChart(){
     });
   });
 }
+
+/* ================= YEARLY SUMMARY ================= */
+const overlayYearly = document.getElementById('overlayYearly');
+let yearlyViewYear = today.getFullYear();
+
+function computeYearData(y){
+  const months = [];
+  let totalVenit = 0, totalCheltuiala = 0;
+  for(let m=0; m<12; m++){
+    const key = `${y}-${pad(m+1)}`;
+    const txs = data.transactions.filter(t => t.date.startsWith(key));
+    let venit=0, cheltuiala=0;
+    txs.forEach(t=>{
+      if(t.type==='venit' && !t.toPot && !t.fromPot) venit+=Number(t.amount);
+      else if(t.type==='cheltuiala' && t.fundedBy!=='accesibile' && !t.toPot) cheltuiala+=Number(t.amount);
+    });
+    months.push({m, venit, cheltuiala});
+    totalVenit += venit;
+    totalCheltuiala += cheltuiala;
+  }
+  return {months, totalVenit, totalCheltuiala};
+}
+
+function renderYearly(){
+  document.getElementById('yearLabel').textContent = yearlyViewYear;
+  const yd = computeYearData(yearlyViewYear);
+  document.getElementById('yearVenit').textContent = money(yd.totalVenit);
+  document.getElementById('yearCheltuiala').textContent = money(yd.totalCheltuiala);
+  const net = yd.totalVenit - yd.totalCheltuiala;
+  document.getElementById('yearNet').textContent = money(net);
+  document.getElementById('yearNetCard').classList.toggle('negative', net < 0);
+
+  const container = document.getElementById('yearlyChart');
+  container.innerHTML = '';
+  const max = Math.max(1, ...yd.months.flatMap(d=>[d.venit,d.cheltuiala]));
+  const maxH = 96;
+  yd.months.forEach(d => {
+    const col = document.createElement('div');
+    col.className = 'trend-col';
+    const bars = document.createElement('div');
+    bars.className = 'trend-bars';
+    const bV = document.createElement('div');
+    bV.className = 'trend-bar venit';
+    bV.style.height = Math.max(2, (d.venit/max)*maxH) + 'px';
+    bV.style.width = '6px';
+    const bC = document.createElement('div');
+    bC.className = 'trend-bar cheltuiala';
+    bC.style.height = Math.max(2, (d.cheltuiala/max)*maxH) + 'px';
+    bC.style.width = '6px';
+    bars.appendChild(bV); bars.appendChild(bC);
+    col.appendChild(bars);
+    const lbl = document.createElement('div');
+    lbl.className = 'trend-lbl';
+    lbl.textContent = MONTHS_SHORT[d.m];
+    col.appendChild(lbl);
+    container.appendChild(col);
+  });
+
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      container.querySelectorAll('.trend-bar').forEach((b,i)=>{
+        setTimeout(()=> b.classList.add('show'), i*25);
+      });
+    });
+  });
+}
+
+document.getElementById('btnYearly').addEventListener('click', () => {
+  yearlyViewYear = today.getFullYear();
+  renderYearly();
+  overlayYearly.classList.add('show');
+});
+document.getElementById('closeYearly').addEventListener('click', () => overlayYearly.classList.remove('show'));
+overlayYearly.addEventListener('click', (e) => { if(e.target === overlayYearly) overlayYearly.classList.remove('show'); });
+document.getElementById('prevYear').addEventListener('click', () => { yearlyViewYear--; renderYearly(); });
+document.getElementById('nextYear').addEventListener('click', () => { yearlyViewYear++; renderYearly(); });
 
 /* ================= DONUT CHART (categories, current month) ================= */
 function renderDonutChart(monthTx){
@@ -1683,8 +1861,10 @@ function renderRecurringList(){
     row.innerHTML = `
       <div class="rinfo"><strong>${escapeHtml(r.description)}</strong><br>
       <span style="color:var(--ink-soft)">${labels[r.type]} · ${Number(r.amount).toLocaleString('ro-RO', {maximumFractionDigits:2})} lei · ziua ${r.dayOfMonth}</span></div>
+      <button class="redit" data-id="${r.id}">Editează</button>
       <button class="rdel" data-id="${r.id}">Oprește</button>
     `;
+    row.querySelector('.redit').addEventListener('click', () => openEditRecurringModal(r.id));
     row.querySelector('.rdel').addEventListener('click', () => {
       data.recurring = data.recurring.filter(x => x.id !== r.id);
       saveData();
@@ -1695,8 +1875,115 @@ function renderRecurringList(){
   });
 }
 
+const overlayEditRec = document.getElementById('overlayEditRec');
+let editingRecId = null;
+function openEditRecurringModal(recId){
+  editingRecId = recId;
+  const r = data.recurring.find(x => x.id === recId);
+  if(!r) return;
+  document.getElementById('editRecAmount').value = String(r.amount).replace('.', ',');
+  document.getElementById('editRecDesc').value = r.description;
+  document.getElementById('editRecErr').style.display = 'none';
+  document.getElementById('editRecNote').textContent = `Se aplică pentru lunile viitoare, care nu sunt încă generate. Lunile deja apărute în listă păstrează suma veche — le poți corecta individual, apăsând pe ele.`;
+  overlayEditRec.classList.add('show');
+}
+document.getElementById('closeEditRec').addEventListener('click', () => overlayEditRec.classList.remove('show'));
+overlayEditRec.addEventListener('click', (e) => { if(e.target === overlayEditRec) overlayEditRec.classList.remove('show'); });
+document.getElementById('editRecSave').addEventListener('click', () => {
+  const amount = parseAmount(document.getElementById('editRecAmount').value);
+  const desc = document.getElementById('editRecDesc').value.trim();
+  const errEl = document.getElementById('editRecErr');
+  if(!amount || amount <= 0 || !desc){
+    errEl.textContent = 'Completează suma și descrierea.';
+    errEl.style.display = 'block';
+    return;
+  }
+  const r = data.recurring.find(x => x.id === editingRecId);
+  if(r){ r.amount = amount; r.description = desc; }
+  saveData();
+  overlayEditRec.classList.remove('show');
+  renderRecurringList();
+  render();
+});
+
 /* ================= SAVINGS TAB ================= */
+/* ================= SAVINGS EVOLUTION CHART ================= */
+function potBalanceAsOf(potId, endDateStr){
+  let bal = 0;
+  data.savingsLog.filter(l => l.potId === potId && l.date <= endDateStr).forEach(l => {
+    if(l.type === 'depunere') bal += Number(l.amount);
+    else bal -= Number(l.amount);
+  });
+  return bal;
+}
+
+function renderSavingsEvolution(){
+  const evoCard = document.getElementById('savingsEvoCard');
+  if(data.savingsLog.length === 0){
+    evoCard.style.display = 'none';
+    return;
+  }
+  evoCard.style.display = 'block';
+
+  const months = [];
+  for(let i=5;i>=0;i--){
+    let y=today.getFullYear(), m=today.getMonth()-i;
+    while(m<0){ m+=12; y--; }
+    months.push({y,m});
+  }
+
+  const palette = ['var(--blue)','var(--purple)','var(--teal)','var(--pink)','var(--gray)'];
+  const potColors = {};
+  let ci = 0;
+  data.savingsPots.forEach(p => { potColors[p.id] = p.pinned ? 'var(--brass)' : palette[ci++ % palette.length]; });
+
+  const rows = months.map(({y,m}) => {
+    const endDate = fmtDate(y, m, daysInMonth(y,m));
+    const balances = data.savingsPots.map(p => ({ pot:p, bal: potBalanceAsOf(p.id, endDate) }));
+    return {y, m, balances};
+  });
+  const max = Math.max(1, ...rows.flatMap(r => r.balances.map(b => b.bal)));
+
+  const container = document.getElementById('savingsEvoChart');
+  container.innerHTML = '';
+  const maxH = 92;
+  const barW = data.savingsPots.length > 3 ? 5 : 7;
+  rows.forEach(({y,m,balances}) => {
+    const col = document.createElement('div');
+    col.className = 'trend-col';
+    const bars = document.createElement('div');
+    bars.className = 'trend-bars';
+    balances.forEach(b => {
+      const bar = document.createElement('div');
+      bar.className = 'trend-bar';
+      bar.style.background = potColors[b.pot.id];
+      bar.style.height = Math.max(2, (b.bal/max)*maxH) + 'px';
+      bar.style.width = barW + 'px';
+      bars.appendChild(bar);
+    });
+    col.appendChild(bars);
+    const lbl = document.createElement('div');
+    lbl.className = 'trend-lbl';
+    lbl.textContent = MONTHS_SHORT[m];
+    col.appendChild(lbl);
+    container.appendChild(col);
+  });
+
+  document.getElementById('savingsEvoLegend').innerHTML = data.savingsPots
+    .map(p => `<span><i class="legend-dot" style="background:${potColors[p.id]}"></i>${escapeHtml(p.name)}</span>`)
+    .join('');
+
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      container.querySelectorAll('.trend-bar').forEach((b,i)=>{
+        setTimeout(()=> b.classList.add('show'), i*25);
+      });
+    });
+  });
+}
+
 function renderSavings(){
+  renderSavingsEvolution();
   const list = document.getElementById('potsList');
   list.innerHTML = '';
   const pinned = data.savingsPots.find(p => p.pinned);
@@ -1710,6 +1997,7 @@ function renderSavings(){
     card.innerHTML = `
       <div class="pot-top">
         <div class="pot-name"><span class="picon">${pot.pinned ? ICONS.coin : ICONS.trending}</span>${escapeHtml(pot.name)}</div>
+        ${!pot.pinned ? `<button class="pot-rename" data-act="rename">${ICONS.pencil}</button>` : ''}
       </div>
       <div class="pot-bal">${money(pot.balance)}</div>
       <div class="pot-sub">${pot.pinned ? 'Bani la care ai acces oricând' : 'Cont separat — nu afectează foaia principală'}</div>
@@ -1730,6 +2018,8 @@ function renderSavings(){
       document.getElementById('log-'+pot.id).classList.toggle('show');
     });
     card.querySelector('[data-act="add"]').addEventListener('click', () => openDepositModal(pot.id));
+    const ren = card.querySelector('[data-act="rename"]');
+    if(ren) ren.addEventListener('click', (e) => { e.stopPropagation(); openRenamePotModal(pot.id); });
     const wd = card.querySelector('[data-act="withdraw"]');
     if(wd) wd.addEventListener('click', () => openWithdrawModal(pot.id));
     const del = card.querySelector('[data-act="del"]');
@@ -1759,17 +2049,38 @@ async function deletePot(potId){
 
 /* add pot */
 const overlayAddPot = document.getElementById('overlayAddPot');
+let renamingPotId = null;
 document.getElementById('btnAddPot').addEventListener('click', () => {
+  renamingPotId = null;
+  document.getElementById('addPotTitle').innerHTML = 'Cont nou de economii <button id="closeAddPot">×</button>';
+  document.getElementById('closeAddPot').addEventListener('click', () => overlayAddPot.classList.remove('show'));
+  document.getElementById('addPotNote').textContent = 'Ex: Bursă, Fond de urgență, Vacanță. Acest cont e separat de foaia principală — nu afectează banii rămași.';
+  document.getElementById('potSave').textContent = 'Creează cont';
   document.getElementById('potName').value = '';
   document.getElementById('potErr').style.display = 'none';
   overlayAddPot.classList.add('show');
 });
-document.getElementById('closeAddPot').addEventListener('click', () => overlayAddPot.classList.remove('show'));
+function openRenamePotModal(potId){
+  renamingPotId = potId;
+  const pot = data.savingsPots.find(p => p.id === potId);
+  document.getElementById('addPotTitle').innerHTML = 'Redenumește contul <button id="closeAddPot">×</button>';
+  document.getElementById('closeAddPot').addEventListener('click', () => overlayAddPot.classList.remove('show'));
+  document.getElementById('addPotNote').textContent = 'Soldul și istoricul rămân neschimbate — doar numele se schimbă.';
+  document.getElementById('potSave').textContent = 'Salvează numele';
+  document.getElementById('potName').value = pot ? pot.name : '';
+  document.getElementById('potErr').style.display = 'none';
+  overlayAddPot.classList.add('show');
+}
 overlayAddPot.addEventListener('click', (e)=>{ if(e.target===overlayAddPot) overlayAddPot.classList.remove('show'); });
 document.getElementById('potSave').addEventListener('click', () => {
   const name = document.getElementById('potName').value.trim();
   if(!name){ document.getElementById('potErr').style.display = 'block'; return; }
-  data.savingsPots.push({ id: uid(), name, balance:0, locked:true, pinned:false });
+  if(renamingPotId){
+    const pot = data.savingsPots.find(p => p.id === renamingPotId);
+    if(pot) pot.name = name;
+  } else {
+    data.savingsPots.push({ id: uid(), name, balance:0, locked:true, pinned:false });
+  }
   saveData();
   overlayAddPot.classList.remove('show');
   renderSavings();

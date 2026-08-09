@@ -1,4 +1,4 @@
-const CACHE = 'registru-v17';
+const CACHE = 'registru-v18';
 const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
