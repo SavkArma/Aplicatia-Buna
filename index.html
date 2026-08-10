@@ -352,7 +352,12 @@
   .pot-actions button.secondary{ background:var(--card); color:var(--ink); }
   .pot-actions button.warn{ background:var(--card); color:var(--red); border-color:var(--red-soft); }
   .pot-actions button.danger{ background:var(--card); color:var(--red); border-color:var(--red-soft); flex:0 0 auto; padding:9px 12px; }
-  .sub-note{ font-size:11px; color:var(--brass-light); margin-top:8px; position:relative; }
+  .sub-note{
+    display:flex; flex-wrap:wrap; gap:14px;
+    margin-top:8px; position:relative;
+  }
+  .sub-note div{ font-size:11.5px; color:var(--brass-light); opacity:0.9; }
+  .sub-note b{ font-family:var(--font-mono); font-weight:700; color:var(--brass-light); }
   .pot-log{ margin-top:12px; border-top:1px dashed var(--rule); padding-top:10px; display:none; }
   .pot-log.show{ display:block; }
   .pot-log .lrow{ font-size:11.5px; color:var(--ink-soft); padding:3px 0; display:flex; justify-content:space-between; }
@@ -996,10 +1001,11 @@ function render(){
   document.getElementById('subCheltuiala').textContent = money(totals.cheltuiala);
   const noteEl = document.getElementById('econSpentNote');
   const notes = [];
-  if(econSpent > 0) notes.push(`${ICONS.coin} + ${money(econSpent)} cheltuiți din Economii accesibile (nu afectează suma de mai sus)`);
-  if(transferToPots > 0) notes.push(`${ICONS.coin} ${money(transferToPots)} mutați spre conturi de economii — nu e o cheltuială, doar și-a schimbat locul`);
-  if(transferFromPots > 0) notes.push(`${ICONS.coin} ${money(transferFromPots)} aduși din economii — nu e un venit nou, doar și-a schimbat locul`);
-  noteEl.innerHTML = notes.join('<br>');
+  if(econSpent > 0) notes.push(`<div>Cheltuit din economii: <b>${money(econSpent)}</b></div>`);
+  if(transferToPots > 0) notes.push(`<div>Spre economii: <b>${money(transferToPots)}</b></div>`);
+  if(transferFromPots > 0) notes.push(`<div>Din economii: <b>${money(transferFromPots)}</b></div>`);
+  noteEl.innerHTML = notes.join('');
+  noteEl.style.display = notes.length ? 'flex' : 'none';
 
   const available = totals.venit - totals.cheltuiala - transferToPots + transferFromPots;
   const hero = document.getElementById('availableHero');
@@ -1169,6 +1175,14 @@ document.getElementById('txFilterCat').addEventListener('change', applyTxSearch)
 async function deleteTransaction(id){
   const t = data.transactions.find(x => x.id === id);
   if(!t) return;
+
+  if(!t.recurringId){
+    const ok = await showConfirm(
+      `Ștergi „${t.description}” (${money(Number(t.amount))})? Nu poate fi anulat.`,
+      'Ștergi înregistrarea?', 'Șterge', true
+    );
+    if(!ok) return;
+  }
 
   if(t.type === 'cheltuiala' && t.fundedBy === 'accesibile'){
     const pot = data.savingsPots.find(p => p.pinned);
@@ -1442,9 +1456,13 @@ function renderBudgets(monthTx){
     const c = t.category && CATEGORY_META[t.category] ? t.category : 'altele';
     spentByCat[c] = (spentByCat[c] || 0) + Number(t.amount);
   });
-  const transferredToPots = monthTx
+  const transferOut = monthTx
     .filter(t => t.type === 'cheltuiala' && t.toPot)
     .reduce((sum, t) => sum + Number(t.amount), 0);
+  const transferIn = monthTx
+    .filter(t => t.type === 'venit' && t.fromPot)
+    .reduce((sum, t) => sum + Number(t.amount), 0);
+  const transferredToPots = Math.max(0, transferOut - transferIn);
 
   const rows = Object.keys(CATEGORY_META).map(catKey => ({
     key: catKey, label: CATEGORY_META[catKey].label, color: CATEGORY_META[catKey].color, spent: spentByCat[catKey] || 0
