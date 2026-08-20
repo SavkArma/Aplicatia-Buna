@@ -247,6 +247,7 @@
   .budget-row:last-child{ border-bottom:none; }
   .budget-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
   .budget-name{ display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; }
+  .budget-edit-cat{ background:none; border:none; color:var(--ink-faint); font-size:12px; padding:4px; display:flex; }
   .budget-amt{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-soft); }
   .budget-bar-track{ height:6px; border-radius:4px; background:var(--rule); overflow:hidden; }
   .budget-bar-fill{ height:100%; border-radius:4px; transition:width .5s cubic-bezier(.3,.8,.4,1); }
@@ -293,6 +294,8 @@
     padding:10px 12px; margin-bottom:8px; cursor:pointer;
     box-shadow: 0 1px 4px rgba(0,0,0,0.2);
   }
+  .tx-row.refunded{ opacity:0.55; }
+  .tx-row.refunded .amount{ text-decoration:line-through; }
   .tx-row .tag{
     width:8px; height:34px; border-radius:4px; flex-shrink:0;
   }
@@ -515,6 +518,7 @@
     <div class="chart-card">
       <h3>Bugete pe categorii <span class="tip">apasă ca să setezi o limită</span></h3>
       <div id="budgetsList"></div>
+      <button class="add-pot-btn" id="btnAddCategory" style="margin-top:10px;">+ Categorie nouă</button>
     </div>
   </div>
 
@@ -549,16 +553,7 @@
         <option value="cheltuiala">Cheltuială</option>
         <option value="transfer">Transfer</option>
       </select>
-      <select id="txFilterCat" class="tx-filter-select">
-        <option value="">Toate categoriile</option>
-        <option value="chirie">Chirie</option>
-        <option value="mancare">Mâncare</option>
-        <option value="transport">Transport</option>
-        <option value="facturi">Facturi</option>
-        <option value="sanatate">Sănătate</option>
-        <option value="distractie">Distracție</option>
-        <option value="altele">Altele</option>
-      </select>
+      <select id="txFilterCat" class="tx-filter-select"></select>
     </div>
     <div class="info-note" id="txFilterHint" style="display:none; margin:10px 0 0;">🔍 Cauți/filtrezi în toate lunile, nu doar în cea afișată.</div>
   </div>
@@ -614,15 +609,7 @@
     </div>
     <div class="field" id="fCatWrap">
       <label>Categorie</label>
-      <select id="fCat">
-        <option value="chirie">Chirie</option>
-        <option value="mancare">Mâncare</option>
-        <option value="transport">Transport</option>
-        <option value="facturi">Facturi</option>
-        <option value="sanatate">Sănătate</option>
-        <option value="distractie">Distracție</option>
-        <option value="altele" selected>Altele</option>
-      </select>
+      <select id="fCat"></select>
     </div>
     <div class="field" id="fDestWrap">
       <label>Destinație</label>
@@ -666,6 +653,22 @@
     <div class="info-note" id="transferInfo"></div>
     <div class="err" id="transferErr"></div>
     <button class="save-btn" id="transferSave">Mută banii</button>
+  </div>
+</div>
+
+<!-- CATEGORY MODAL (create / rename / delete) -->
+<div class="overlay" id="overlayCategory">
+  <div class="sheet">
+    <h3 id="catModalTitle">Categorie nouă <button id="closeCategory">×</button></h3>
+    <div class="field">
+      <label>Nume categorie</label>
+      <input type="text" id="catName" placeholder="ex: Veterinar">
+    </div>
+    <div class="err" id="catErr">Introdu un nume.</div>
+    <button class="save-btn" id="catSave">Creează categoria</button>
+    <div id="catDeleteWrap" style="display:none; margin-top:10px;">
+      <button class="save-btn" id="catDelete" style="background:var(--card); color:var(--red); border:1.5px solid var(--red-soft);">Șterge categoria</button>
+    </div>
   </div>
 </div>
 
@@ -826,6 +829,18 @@
 const OLD_KEY = 'registru_buget_v1';
 const STORE_KEY = 'registru_buget_v2';
 
+const DEFAULT_CATEGORIES = {
+  chirie:    { label:'Chirie',     color:'var(--orange)' },
+  mancare:   { label:'Mâncare',    color:'var(--red)' },
+  transport: { label:'Transport',  color:'var(--blue)' },
+  facturi:   { label:'Facturi',    color:'var(--purple)' },
+  sanatate:  { label:'Sănătate',   color:'var(--teal)' },
+  distractie:{ label:'Distracție', color:'var(--pink)' },
+  altele:    { label:'Altele',     color:'var(--gray)' }
+};
+const CATEGORY_COLOR_PALETTE = ['#7ED957','#D9C25F','#5F7ED9','#D95F8C','#5FD9B8','#C97ED9','#D97E5F','#5FA9D9'];
+function cloneDefaultCategories(){ return JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)); }
+
 function freshData(){
   return {
     transactions: [],
@@ -833,15 +848,17 @@ function freshData(){
     savingsPots: [ { id:'accesibile', name:'Economii accesibile', balance:0, locked:false, pinned:true } ],
     savingsLog: [],
     budgets: {},
-    lastBackupAt: null
+    lastBackupAt: null,
+    categories: cloneDefaultCategories()
   };
 }
 
 function loadData(){
+  let corrupted = false;
   try{
     const raw = localStorage.getItem(STORE_KEY);
     if(raw) return JSON.parse(raw);
-  }catch(e){}
+  }catch(e){ corrupted = true; }
 
   // migrate from v1 if it exists
   try{
@@ -867,14 +884,17 @@ function loadData(){
     }
   }catch(e){}
 
+  if(corrupted) dataLoadWasCorrupted = true;
   return freshData();
 }
+let dataLoadWasCorrupted = false;
 function saveData(){ localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
 let data = loadData();
 if(!data.savingsPots) data.savingsPots = freshData().savingsPots;
 if(!data.savingsLog) data.savingsLog = [];
 if(!data.budgets) data.budgets = {};
 if(data.lastBackupAt === undefined) data.lastBackupAt = null;
+if(!data.categories) data.categories = cloneDefaultCategories();
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
@@ -907,15 +927,25 @@ function escapeHtml(s){
 }
 const MONTHS = ['ianuarie','februarie','martie','aprilie','mai','iunie','iulie','august','septembrie','octombrie','noiembrie','decembrie'];
 const MONTHS_SHORT = ['ian','feb','mar','apr','mai','iun','iul','aug','sep','oct','noi','dec'];
-const CATEGORY_META = {
-  chirie:    { label:'Chirie',     color:'var(--orange)' },
-  mancare:   { label:'Mâncare',    color:'var(--red)' },
-  transport: { label:'Transport',  color:'var(--blue)' },
-  facturi:   { label:'Facturi',    color:'var(--purple)' },
-  sanatate:  { label:'Sănătate',   color:'var(--teal)' },
-  distractie:{ label:'Distracție', color:'var(--pink)' },
-  altele:    { label:'Altele',     color:'var(--gray)' }
-};
+
+
+function populateCategorySelect(selectEl, {withAllOption} = {}){
+  const prev = selectEl.value;
+  selectEl.innerHTML = '';
+  if(withAllOption){
+    const opt = document.createElement('option');
+    opt.value = ''; opt.textContent = 'Toate categoriile';
+    selectEl.appendChild(opt);
+  }
+  Object.keys(data.categories).forEach(key => {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = data.categories[key].label;
+    selectEl.appendChild(opt);
+  });
+  if(prev && data.categories[prev]) selectEl.value = prev;
+  else if(!withAllOption && data.categories.altele) selectEl.value = 'altele';
+}
 
 /* ================= ICON SET (consistent line icons, replace emoji) ================= */
 const ICONS = {
@@ -925,7 +955,7 @@ const ICONS = {
 };
 
 /* ================= STATE ================= */
-const today = new Date();
+let today = new Date();
 let viewYear = today.getFullYear();
 let viewMonth = today.getMonth();
 let selectedDate = todayStr();
@@ -968,6 +998,7 @@ function animateNumber(el, from, to, duration=650){
 
 /* ================= RENDER: MAIN VIEW ================= */
 function render(){
+  today = new Date();
   ensureRecurringForMonth(viewYear, viewMonth);
   checkBackupReminder();
 
@@ -989,7 +1020,8 @@ function render(){
       else totals.venit += Number(t.amount);
     }
     else if(t.type === 'cheltuiala'){
-      if(t.toPot) transferToPots += Number(t.amount);
+      if(t.refunded){ /* excluded entirely — money already returned when the category was deleted */ }
+      else if(t.toPot) transferToPots += Number(t.amount);
       else if(t.fundedBy === 'accesibile') econSpent += Number(t.amount);
       else totals.cheltuiala += Number(t.amount);
     }
@@ -1099,7 +1131,7 @@ function populateTxList(containerId, monthTx, opts){
   const labels = {venit:'Venit', cheltuiala:'Cheltuială'};
   sorted.forEach(t => {
     const row = document.createElement('div');
-    row.className = 'tx-row';
+    row.className = 'tx-row' + (t.refunded ? ' refunded' : '');
     const dayNum = Number(t.date.slice(8,10));
     const txMonth = Number(t.date.slice(5,7)) - 1;
     const txYear = Number(t.date.slice(0,4));
@@ -1107,9 +1139,10 @@ function populateTxList(containerId, monthTx, opts){
     const visualType = isTransfer ? 'transfer' : t.type;
     const visualLabel = isTransfer ? 'Transfer' : labels[t.type];
     const sign = t.type === 'venit' ? '+' : '−';
-    const catBadge = (t.type === 'cheltuiala' && !t.toPot && t.category && CATEGORY_META[t.category])
-      ? `<span class="cat-badge">${CATEGORY_META[t.category].label}</span>` : '';
-    const srcBadge = (t.fundedBy === 'accesibile') ? `<span class="cat-badge">${ICONS.coin} din economii</span>` : '';
+    const catBadge = (t.type === 'cheltuiala' && !t.toPot && !t.refunded && t.category && data.categories[t.category])
+      ? `<span class="cat-badge">${data.categories[t.category].label}</span>` : '';
+    const srcBadge = (t.fundedBy === 'accesibile' && !t.refunded) ? `<span class="cat-badge">${ICONS.coin} din economii</span>` : '';
+    const refundedBadge = t.refunded ? `<span class="cat-badge" style="color:var(--ink-faint);">${ICONS.coin} anulată — bani întorși</span>` : '';
     let potBadge = '';
     if(t.type === 'venit' && t.toPot){
       const p = data.savingsPots.find(x => x.id === t.toPot);
@@ -1126,7 +1159,7 @@ function populateTxList(containerId, monthTx, opts){
       <div class="tag ${visualType}"></div>
       <div class="info">
         <div class="desc">${escapeHtml(t.description)}</div>
-        <div class="meta">${dateLabel} · ${visualLabel}${t.recurringId ? ' · ↻' : ''} ${catBadge} ${srcBadge} ${potBadge}</div>
+        <div class="meta">${dateLabel} · ${visualLabel}${t.recurringId ? ' · ↻' : ''} ${catBadge} ${srcBadge} ${potBadge} ${refundedBadge}</div>
       </div>
       <div class="amount ${visualType}">${sign}${Number(t.amount).toLocaleString('ro-RO', {maximumFractionDigits:2})} lei</div>
       <button class="del" data-id="${t.id}">✕</button>
@@ -1184,7 +1217,7 @@ async function deleteTransaction(id){
     if(!ok) return;
   }
 
-  if(t.type === 'cheltuiala' && t.fundedBy === 'accesibile'){
+  if(t.type === 'cheltuiala' && t.fundedBy === 'accesibile' && !t.refunded){
     const pot = data.savingsPots.find(p => p.pinned);
     if(pot){
       pot.balance += Number(t.amount);
@@ -1225,12 +1258,14 @@ async function deleteTransaction(id){
     data.recurring = data.recurring.filter(r => r.id !== recId);
     saveData();
     render();
+    renderSavings();
     return;
   }
 
   data.transactions = data.transactions.filter(x => x.id !== id);
   saveData();
   render();
+  renderSavings();
 }
 
 /* ================= TREND CHART (6 months) ================= */
@@ -1249,7 +1284,7 @@ function renderTrendChart(){
     let venit=0, cheltuiala=0;
     txs.forEach(t=>{
       if(t.type==='venit' && !t.toPot && !t.fromPot) venit+=Number(t.amount);
-      else if(t.type==='cheltuiala' && t.fundedBy !== 'accesibile' && !t.toPot) cheltuiala+=Number(t.amount);
+      else if(t.type==='cheltuiala' && !t.refunded && t.fundedBy !== 'accesibile' && !t.toPot) cheltuiala+=Number(t.amount);
     });
     monthsData.push({y, m, venit, cheltuiala, isCurrent: (y===viewYear && m===viewMonth)});
   }
@@ -1306,7 +1341,7 @@ function computeYearData(y){
     let venit=0, cheltuiala=0;
     txs.forEach(t=>{
       if(t.type==='venit' && !t.toPot && !t.fromPot) venit+=Number(t.amount);
-      else if(t.type==='cheltuiala' && t.fundedBy!=='accesibile' && !t.toPot) cheltuiala+=Number(t.amount);
+      else if(t.type==='cheltuiala' && !t.refunded && t.fundedBy!=='accesibile' && !t.toPot) cheltuiala+=Number(t.amount);
     });
     months.push({m, venit, cheltuiala});
     totalVenit += venit;
@@ -1360,6 +1395,7 @@ function renderYearly(){
 }
 
 document.getElementById('btnYearly').addEventListener('click', () => {
+  today = new Date();
   yearlyViewYear = today.getFullYear();
   renderYearly();
   overlayYearly.classList.add('show');
@@ -1372,14 +1408,14 @@ document.getElementById('nextYear').addEventListener('click', () => { yearlyView
 /* ================= DONUT CHART (categories, current month) ================= */
 function renderDonutChart(monthTx){
   const holder = document.getElementById('donutHolder');
-  const cheltuieli = monthTx.filter(t => t.type === 'cheltuiala' && !t.toPot);
+  const cheltuieli = monthTx.filter(t => t.type === 'cheltuiala' && !t.toPot && !t.refunded);
   if(cheltuieli.length === 0){
     holder.innerHTML = '<div class="empty-chart">Nicio cheltuială înregistrată încă luna aceasta.</div>';
     return;
   }
   const groups = {};
   cheltuieli.forEach(t => {
-    const c = t.category && CATEGORY_META[t.category] ? t.category : 'altele';
+    const c = t.category && data.categories[t.category] ? t.category : 'altele';
     groups[c] = (groups[c]||0) + Number(t.amount);
   });
   const total = Object.values(groups).reduce((a,b)=>a+b,0);
@@ -1390,7 +1426,7 @@ function renderDonutChart(monthTx){
   let circles = '';
   entries.forEach(([cat,val]) => {
     const frac = val/total;
-    const meta = CATEGORY_META[cat];
+    const meta = data.categories[cat];
     const rotate = -90 + cumulative*360;
     circles += `<circle data-cat="${cat}" cx="60" cy="60" r="${r}" fill="none" stroke="${meta.color}"
       stroke-width="16" stroke-dasharray="${C}" stroke-dashoffset="${C}"
@@ -1416,7 +1452,7 @@ function renderDonutChart(monthTx){
 
   const legend = document.getElementById('donutLegend');
   entries.forEach(([cat,val]) => {
-    const meta = CATEGORY_META[cat];
+    const meta = data.categories[cat];
     const pct = Math.round((val/total)*100);
     const row = document.createElement('div');
     row.className = 'dl-row';
@@ -1452,8 +1488,8 @@ function renderBudgets(monthTx){
   const container = document.getElementById('budgetsList');
   if(!container) return;
   const spentByCat = {};
-  monthTx.filter(t => t.type === 'cheltuiala' && !t.toPot).forEach(t => {
-    const c = t.category && CATEGORY_META[t.category] ? t.category : 'altele';
+  monthTx.filter(t => t.type === 'cheltuiala' && !t.toPot && !t.refunded).forEach(t => {
+    const c = t.category && data.categories[t.category] ? t.category : 'altele';
     spentByCat[c] = (spentByCat[c] || 0) + Number(t.amount);
   });
   const transferOut = monthTx
@@ -1464,8 +1500,8 @@ function renderBudgets(monthTx){
     .reduce((sum, t) => sum + Number(t.amount), 0);
   const transferredToPots = Math.max(0, transferOut - transferIn);
 
-  const rows = Object.keys(CATEGORY_META).map(catKey => ({
-    key: catKey, label: CATEGORY_META[catKey].label, color: CATEGORY_META[catKey].color, spent: spentByCat[catKey] || 0
+  const rows = Object.keys(data.categories).map(catKey => ({
+    key: catKey, label: data.categories[catKey].label, color: data.categories[catKey].color, spent: spentByCat[catKey] || 0
   }));
   rows.push({ key:'economii', label:'Economii', color:'var(--brass)', spent: transferredToPots });
 
@@ -1474,6 +1510,9 @@ function renderBudgets(monthTx){
     const limit = data.budgets[key];
     const row = document.createElement('div');
     row.className = 'budget-row';
+    const nameHtml = key === 'economii'
+      ? `<span class="budget-name"><i class="dl-dot" style="background:${color}"></i>${label}</span>`
+      : `<span class="budget-name"><i class="dl-dot" style="background:${color}"></i>${escapeHtml(label)}<button class="budget-edit-cat" data-key="${key}">${ICONS.pencil}</button></span>`;
 
     if(limit){
       const pct = Math.min(100, Math.round((spent/limit)*100));
@@ -1481,7 +1520,7 @@ function renderBudgets(monthTx){
       const barColor = over ? 'var(--red)' : (pct >= 80 ? 'var(--brass)' : color);
       row.innerHTML = `
         <div class="budget-top">
-          <span class="budget-name"><i class="dl-dot" style="background:${color}"></i>${label}</span>
+          ${nameHtml}
           <span class="budget-amt" style="${over ? 'color:var(--red); font-weight:700;' : ''}">${money(spent)} / ${money(limit)}</span>
         </div>
         <div class="budget-bar-track"><div class="budget-bar-fill" style="width:0%; background:${barColor};" data-target="${pct}"></div></div>
@@ -1489,12 +1528,14 @@ function renderBudgets(monthTx){
     } else {
       row.innerHTML = `
         <div class="budget-top">
-          <span class="budget-name"><i class="dl-dot" style="background:${color}"></i>${label}</span>
+          ${nameHtml}
           <span class="budget-amt">${spent > 0 ? money(spent) + ' · ' : ''}fără limită</span>
         </div>
       `;
     }
     row.addEventListener('click', () => openBudgetModal(key));
+    const editBtn = row.querySelector('.budget-edit-cat');
+    if(editBtn) editBtn.addEventListener('click', (e) => { e.stopPropagation(); openEditCategoryModal(key); });
     container.appendChild(row);
   });
 
@@ -1511,13 +1552,103 @@ const overlayBudget = document.getElementById('overlayBudget');
 let budgetCatKey = null;
 function openBudgetModal(catKey){
   budgetCatKey = catKey;
-  const label = catKey === 'economii' ? 'Economii' : CATEGORY_META[catKey].label;
+  const label = catKey === 'economii' ? 'Economii' : data.categories[catKey].label;
   document.querySelector('#overlayBudget h3').innerHTML = `Buget: ${label} <button id="closeBudget">×</button>`;
   document.getElementById('closeBudget').addEventListener('click', () => overlayBudget.classList.remove('show'));
   document.getElementById('budgetAmount').value = data.budgets[catKey] || '';
   overlayBudget.classList.add('show');
 }
 overlayBudget.addEventListener('click', (e) => { if(e.target === overlayBudget) overlayBudget.classList.remove('show'); });
+
+/* ================= CATEGORY MANAGEMENT (add / rename / delete) ================= */
+const overlayCategory = document.getElementById('overlayCategory');
+let editingCatKey = null;
+
+document.getElementById('btnAddCategory').addEventListener('click', () => {
+  editingCatKey = null;
+  document.getElementById('catModalTitle').innerHTML = 'Categorie nouă <button id="closeCategory">×</button>';
+  document.getElementById('closeCategory').addEventListener('click', () => overlayCategory.classList.remove('show'));
+  document.getElementById('catName').value = '';
+  document.getElementById('catErr').style.display = 'none';
+  document.getElementById('catSave').textContent = 'Creează categoria';
+  document.getElementById('catDeleteWrap').style.display = 'none';
+  overlayCategory.classList.add('show');
+});
+
+function openEditCategoryModal(key){
+  editingCatKey = key;
+  const cat = data.categories[key];
+  if(!cat) return;
+  document.getElementById('catModalTitle').innerHTML = 'Redenumește categoria <button id="closeCategory">×</button>';
+  document.getElementById('closeCategory').addEventListener('click', () => overlayCategory.classList.remove('show'));
+  document.getElementById('catName').value = cat.label;
+  document.getElementById('catErr').style.display = 'none';
+  document.getElementById('catSave').textContent = 'Salvează numele';
+  document.getElementById('catDeleteWrap').style.display = key === 'altele' ? 'none' : 'block';
+  overlayCategory.classList.add('show');
+}
+overlayCategory.addEventListener('click', (e) => { if(e.target === overlayCategory) overlayCategory.classList.remove('show'); });
+
+document.getElementById('catSave').addEventListener('click', () => {
+  const name = document.getElementById('catName').value.trim();
+  const errEl = document.getElementById('catErr');
+  if(!name){ errEl.textContent = 'Introdu un nume.'; errEl.style.display = 'block'; return; }
+  errEl.style.display = 'none';
+
+  if(editingCatKey){
+    data.categories[editingCatKey].label = name;
+  } else {
+    let baseKey = name.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '') || 'categorie';
+    let key = baseKey, n = 2;
+    while(data.categories[key]){ key = baseKey + n; n++; }
+    const usedColors = Object.values(data.categories).map(c => c.color);
+    const nextColor = CATEGORY_COLOR_PALETTE.find(c => !usedColors.includes(c))
+      || CATEGORY_COLOR_PALETTE[Object.keys(data.categories).length % CATEGORY_COLOR_PALETTE.length];
+    data.categories[key] = { label: name, color: nextColor };
+  }
+  saveData();
+  overlayCategory.classList.remove('show');
+  populateCategorySelect(document.getElementById('txFilterCat'), {withAllOption:true});
+  render();
+});
+
+document.getElementById('catDelete').addEventListener('click', async () => {
+  if(!editingCatKey || editingCatKey === 'altele') return;
+  const cat = data.categories[editingCatKey];
+  const affected = data.transactions.filter(t => t.type === 'cheltuiala' && t.category === editingCatKey && !t.refunded);
+  const totalAffected = affected.reduce((s,t) => s + Number(t.amount), 0);
+
+  let msg = `Ștergi categoria „${cat.label}”?`;
+  if(affected.length > 0){
+    msg += ` Cheltuielile de pe ea (${money(totalAffected)}, ${affected.length} ${affected.length===1?'înregistrare':'înregistrări'}) rămân în listă ca dovadă, dar nu mai contează ca bani cheltuiți — suma se întoarce la sursă chiar acum. Dacă le ștergi vreodată din listă, banii NU se mai mișcă a doua oară.`;
+  } else {
+    msg += ` Nu are nicio cheltuială pe ea momentan.`;
+  }
+
+  const ok = await showConfirm(msg, 'Ștergi categoria?', 'Șterge categoria', true);
+  if(!ok) return;
+
+  affected.forEach(t => {
+    if(t.fundedBy === 'accesibile'){
+      const pot = data.savingsPots.find(p => p.pinned);
+      if(pot){
+        pot.balance += Number(t.amount);
+        data.savingsLog.push({ id: uid(), potId: pot.id, type:'depunere', amount: Number(t.amount), date: todayStr(), note:`Corectare — categorie ștearsă: ${cat.label}` });
+      }
+    }
+    t.refunded = true; // excluded from all totals from now on, but stays visible in the list
+  });
+
+  delete data.categories[editingCatKey];
+  delete data.budgets[editingCatKey];
+  saveData();
+  overlayCategory.classList.remove('show');
+  populateCategorySelect(document.getElementById('txFilterCat'), {withAllOption:true});
+  render();
+  renderSavings();
+});
 document.getElementById('budgetSave').addEventListener('click', () => {
   const amt = parseAmount(document.getElementById('budgetAmount').value);
   if(amt && amt > 0){
@@ -1572,6 +1703,7 @@ let currentSource = 'venit';
 let editingTxId = null;
 
 function openAddModal(dateStr){
+  today = new Date();
   editingTxId = null;
   document.querySelector('#overlayAdd h3').innerHTML = 'Adaugă înregistrare <button id="closeAdd">×</button>';
   document.getElementById('closeAdd').addEventListener('click', closeAddModal);
@@ -1581,6 +1713,7 @@ function openAddModal(dateStr){
   document.getElementById('fDesc').value = '';
   document.getElementById('fDate').value = dateStr || fmtDate(viewYear, viewMonth, Math.min(today.getDate(), daysInMonth(viewYear,viewMonth)));
   document.getElementById('fRecurring').checked = false;
+  populateCategorySelect(document.getElementById('fCat'));
   document.getElementById('fCat').value = 'altele';
   document.getElementById('fErr').style.display = 'none';
   document.getElementById('fErr').style.color = '';
@@ -1599,7 +1732,8 @@ function openEditModal(t){
   document.getElementById('fAmount').value = t.amount;
   document.getElementById('fDesc').value = t.description;
   document.getElementById('fDate').value = t.date;
-  document.getElementById('fCat').value = t.category || 'altele';
+  populateCategorySelect(document.getElementById('fCat'));
+  document.getElementById('fCat').value = (t.category && data.categories[t.category]) ? t.category : 'altele';
   document.getElementById('fErr').style.display = 'none';
   document.getElementById('fErr').style.color = '';
   setType(t.type);
@@ -1804,6 +1938,7 @@ document.getElementById('fSave').addEventListener('click', () => {
     const d = new Date(dateVal);
     viewYear = d.getFullYear(); viewMonth = d.getMonth();
     render();
+    renderSavings();
     return;
   }
 
@@ -1857,6 +1992,7 @@ document.getElementById('fSave').addEventListener('click', () => {
   const d = new Date(dateVal);
   viewYear = d.getFullYear(); viewMonth = d.getMonth();
   render();
+  renderSavings();
 });
 
 document.getElementById('fDelete').addEventListener('click', async () => {
@@ -2237,7 +2373,7 @@ function computeAvailableForMonth(y, m){
   let v = 0, c = 0;
   txs.forEach(t => {
     if(t.type === 'venit' && !t.toPot) v += Number(t.amount);
-    else if(t.type === 'cheltuiala' && t.fundedBy !== 'accesibile') c += Number(t.amount);
+    else if(t.type === 'cheltuiala' && !t.refunded && t.fundedBy !== 'accesibile') c += Number(t.amount);
   });
   return v - c;
 }
@@ -2276,6 +2412,7 @@ function updateTransferInfo(){
 }
 
 document.getElementById('btnTransfer').addEventListener('click', () => {
+  today = new Date();
   populateTransferPots();
   setTransferDir('out');
   document.getElementById('transferAmount').value = '';
@@ -2472,6 +2609,7 @@ document.getElementById('importFileInput').addEventListener('change', async (e) 
     if(!data.savingsLog) data.savingsLog = [];
     if(!data.recurring) data.recurring = [];
     if(!data.budgets) data.budgets = {};
+    if(!data.categories) data.categories = cloneDefaultCategories();
 
     saveData();
     overlayBackup.classList.remove('show');
@@ -2494,7 +2632,14 @@ if('serviceWorker' in navigator){
 }
 
 /* ================= INIT ================= */
+populateCategorySelect(document.getElementById('txFilterCat'), {withAllOption:true});
 render();
+if(dataLoadWasCorrupted){
+  showAlert(
+    'Datele salvate pe acest telefon păreau corupte și nu au putut fi citite, așa că a pornit un registru gol, ca să nu se blocheze aplicația. Dacă ai un fișier de backup (din ⇅), îl poți reimporta acum ca să recuperezi tot.',
+    'Date corupte, nu lipsă'
+  );
+}
 </script>
 </body>
 </html>
