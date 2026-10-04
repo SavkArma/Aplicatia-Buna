@@ -963,21 +963,28 @@ let prevAvailable = null; // for animating the hero number
 
 /* ================= RECURRING GENERATION ================= */
 function ensureRecurringForMonth(y, m){
-  const ymKey = `${y}-${pad(m+1)}`;
+  // Backfills every month from each rule's start through (y, m) inclusive —
+  // not just (y, m) itself — so that jumping past unvisited months never
+  // leaves a gap (important now that Disponibil is cumulative: a missed
+  // month's rent would otherwise silently inflate every later month).
+  const viewYM = y*12 + m;
   data.recurring.forEach(r => {
     if(!r.skippedMonths) r.skippedMonths = [];
-    if(r.skippedMonths.includes(ymKey)) return;
     const start = new Date(r.startDate);
     const startYM = start.getFullYear()*12 + start.getMonth();
-    const viewYM = y*12 + m;
     if(viewYM < startYM) return;
-    const already = data.transactions.some(t => t.recurringId === r.id && t.date.startsWith(ymKey));
-    if(already) return;
-    const day = Math.min(r.dayOfMonth, daysInMonth(y,m));
-    data.transactions.push({
-      id: uid(), type:r.type, amount:r.amount, description:r.description,
-      category: r.category || 'altele', date: fmtDate(y,m,day), recurringId: r.id
-    });
+    for(let ym = startYM; ym <= viewYM; ym++){
+      const yy = Math.floor(ym/12), mm = ym%12;
+      const ymKey = `${yy}-${pad(mm+1)}`;
+      if(r.skippedMonths.includes(ymKey)) continue;
+      const already = data.transactions.some(t => t.recurringId === r.id && t.date.startsWith(ymKey));
+      if(already) continue;
+      const day = Math.min(r.dayOfMonth, daysInMonth(yy,mm));
+      data.transactions.push({
+        id: uid(), type:r.type, amount:r.amount, description:r.description,
+        category: r.category || 'altele', date: fmtDate(yy,mm,day), recurringId: r.id
+      });
+    }
   });
   saveData();
 }
@@ -1000,6 +1007,9 @@ function animateNumber(el, from, to, duration=650){
 function render(){
   today = new Date();
   ensureRecurringForMonth(viewYear, viewMonth);
+  if(viewYear !== today.getFullYear() || viewMonth !== today.getMonth()){
+    ensureRecurringForMonth(today.getFullYear(), today.getMonth());
+  }
   checkBackupReminder();
 
   document.getElementById('monthLabel').textContent = `${MONTHS[viewMonth]} ${viewYear}`;
@@ -1031,15 +1041,25 @@ function render(){
   document.getElementById('sumCheltuiala').textContent = money(totals.cheltuiala);
   document.getElementById('subVenit').textContent = money(totals.venit);
   document.getElementById('subCheltuiala').textContent = money(totals.cheltuiala);
+
+  // Disponibil is now cumulative — everything from the start through the end
+  // of the viewed month — so unspent money carries into the next month
+  // instead of resetting. "Venituri/Cheltuieli luna asta" above stay scoped
+  // to just this month, so the monthly pattern is still visible separately.
+  const thisMonthNet = totals.venit - totals.cheltuiala - transferToPots + transferFromPots;
+  const available = computeAvailableForMonth(viewYear, viewMonth);
+  const carriedOver = available - thisMonthNet;
+
   const noteEl = document.getElementById('econSpentNote');
   const notes = [];
+  if(Math.abs(carriedOver) >= 0.01){
+    notes.push(`<div>Reportat din lunile anterioare: <b>${carriedOver < 0 ? '−' : ''}${money(Math.abs(carriedOver))}</b></div>`);
+  }
   if(econSpent > 0) notes.push(`<div>Cheltuit din economii: <b>${money(econSpent)}</b></div>`);
   if(transferToPots > 0) notes.push(`<div>Spre economii: <b>${money(transferToPots)}</b></div>`);
   if(transferFromPots > 0) notes.push(`<div>Din economii: <b>${money(transferFromPots)}</b></div>`);
   noteEl.innerHTML = notes.join('');
   noteEl.style.display = notes.length ? 'flex' : 'none';
-
-  const available = totals.venit - totals.cheltuiala - transferToPots + transferFromPots;
   const hero = document.getElementById('availableHero');
   const valEl = document.getElementById('availableVal');
   hero.classList.toggle('negative', available < 0);
@@ -2367,13 +2387,16 @@ document.getElementById('pinnedOutSave').addEventListener('click', () => {
 });
 
 /* ================= TRANSFER: Disponibil <-> orice cont ================= */
+// Cumulative Disponibil as of the END of (y, m) — sums every transaction
+// dated on or before the last day of that month, not just that month's own.
+// Money left over from earlier months carries forward automatically.
 function computeAvailableForMonth(y, m){
-  const key = `${y}-${pad(m+1)}`;
-  const txs = data.transactions.filter(t => t.date.startsWith(key));
+  const cutoff = fmtDate(y, m, daysInMonth(y, m));
   let v = 0, c = 0;
-  txs.forEach(t => {
+  data.transactions.forEach(t => {
+    if(t.date > cutoff) return;
     if(t.type === 'venit' && !t.toPot) v += Number(t.amount);
-    else if(t.type === 'cheltuiala' && !t.refunded && t.fundedBy !== 'accesibile') c += Number(t.amount);
+    else if(t.type === 'cheltuiala' && !t.refunded && !t.toPot && t.fundedBy !== 'accesibile') c += Number(t.amount);
   });
   return v - c;
 }
